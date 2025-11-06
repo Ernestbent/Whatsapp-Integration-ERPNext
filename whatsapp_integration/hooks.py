@@ -99,7 +99,7 @@ app_license = "mit"
 # before_app_install = "whatsapp_integration.utils.before_app_install"
 # after_app_install = "whatsapp_integration.utils.after_app_install"
 
-# Integration Cleanup
+# Integration Cleanupsend_whatsapp_document
 # -------------------
 # To clean up dependencies/integrations with other apps
 # Name of the app being uninstalled is passed as an argument
@@ -137,13 +137,28 @@ app_license = "mit"
 # ---------------
 # Hook on document methods and events
 
+# # hooks.py
 # doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-# 	}
+#     "Sales Invoice": {
+#         "on_submit":[
+#             "whatsapp_integration.erpnext_whatsapp.whatsapp_utils.send_whatsapp_text",
+#             # "whatsapp_integration.erpnext_whatsapp.whatsapp_utils.send_whatsapp_document",
+#             "whatsapp_integration.erpnext_whatsapp.whatsapp_utils.send_whatsapp_location",
+#             "whatsapp_integration.erpnext_whatsapp.whatsapp_utils.send_invoice_pdf_whatsapp"
+#             ]
+
+#     },
+#     "Delivery Note": {
+#         "on_submit": "whatsapp_integration.erpnext_whatsapp.whatsapp_utils.send_whatsapp_on_submit"
+#     }
 # }
+
+doc_events = {
+    "Sales Invoice": {
+        "on_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp.send_sales_invoice_whatsapp"
+    }
+}
+
 
 # Scheduled Tasks
 # ---------------
