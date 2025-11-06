@@ -5,7 +5,7 @@ from whatsapp_integration.erpnext_whatsapp.whatsapp_utils import send_whatsapp_t
 
 @frappe.whitelist(allow_guest=True)
 def receive_whatsapp():
-    # Handle Meta verification (GET)
+    # Handle Meta verification challenge
     if frappe.local.request.method == "GET":
         mode = frappe.request.args.get("hub.mode")
         token = frappe.request.args.get("hub.verify_token")
@@ -21,12 +21,12 @@ def receive_whatsapp():
         else:
             frappe.throw("Forbidden", frappe.PermissionError)
 
-    # Handle incoming webhook data (POST)
+    # Handle incoming webhook data 
     raw = frappe.local.request.get_data(as_text=True)
     try:
         payload = json.loads(raw)
         print("\n" + "="*60)
-        print("WHATSAPP WEBHOOK PAYLOAD")
+        print("Whatsapp Webhook Payload Received")
         print("="*60)
         print(json.dumps(payload, indent=2))
         print("="*60 + "\n")

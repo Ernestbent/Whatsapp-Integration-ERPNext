@@ -156,30 +156,25 @@ app_license = "mit"
 doc_events = {
     "Sales Invoice": {
         "on_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp.send_sales_invoice_whatsapp"
-    }
-}
+    },
+    "Delivery Note": {
+        "on_submit": "whatsapp_integration.erpnext_whatsapp.whatsapp_utils.send_invoice_pdf-whatsapp",
+    },
+    "Payment Entry": {
+        "on_submit": "whatsapp_integration.erpnext_whatsapp.whatsapp_utils.send_invoice_pdf_whatsapp"
 
+    },
+    
+}
 
 # Scheduled Tasks
 # ---------------
-
-# scheduler_events = {
-# 	"all": [
-# 		"whatsapp_integration.tasks.all"
-# 	],
-# 	"daily": [
-# 		"whatsapp_integration.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"whatsapp_integration.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"whatsapp_integration.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"whatsapp_integration.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+	"daily": [
+		"whatsapp_integration.erpnext_whatsapp.background_jobs.send_report_daily.send_general_ledger_email"
+	],
+	
+}
 
 # Testing
 # -------
