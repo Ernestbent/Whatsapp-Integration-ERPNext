@@ -140,6 +140,7 @@ doc_events = {
     "Sales Order": {
         "on_submit": [
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_order_confirmation",
+           
             # "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_delivery_location",
         ],
     },
@@ -147,7 +148,12 @@ doc_events = {
         "on_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_delivery_notification",
     },
     "Sales Invoice": {
-        "on_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_invoice_notification"
+        
+        "on_submit": [
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_invoice_notification",
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_invoice_document"
+            ]
+
     },
     "Payment Entry":{
         "on_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_payment_notification"

@@ -1,5 +1,5 @@
 import frappe
-from whatsapp_integration.erpnext_whatsapp.whatsapp_utils import send_text_message, send_location_message
+from whatsapp_integration.erpnext_whatsapp.whatsapp_utils import send_text_message, send_location_message,send_document
 
 def send_order_confirmation(doc, method):
     """
@@ -162,3 +162,7 @@ Thank you for your prompt payment!
         frappe.log_error(f"WhatsApp payment notification error: {str(e)}", "WhatsApp Event")
         frappe.msgprint(f"Error sending WhatsApp payment notification: {str(e)}", indicator="red")
 
+#####Send the document as a PDF when certain documents are saved     
+# 
+
+##Upload media to Whatsapp and then send the document as media message
