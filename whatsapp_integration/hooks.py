@@ -136,36 +136,24 @@ app_license = "mit"
 # Document Events
 # ---------------
 # Hook on document methods and events
-
-# # hooks.py
-# doc_events = {
-#     "Sales Invoice": {
-#         "on_submit":[
-#             "whatsapp_integration.erpnext_whatsapp.whatsapp_utils.send_whatsapp_text",
-#             # "whatsapp_integration.erpnext_whatsapp.whatsapp_utils.send_whatsapp_document",
-#             "whatsapp_integration.erpnext_whatsapp.whatsapp_utils.send_whatsapp_location",
-#             "whatsapp_integration.erpnext_whatsapp.whatsapp_utils.send_invoice_pdf_whatsapp"
-#             ]
-
-#     },
-#     "Delivery Note": {
-#         "on_submit": "whatsapp_integration.erpnext_whatsapp.whatsapp_utils.send_whatsapp_on_submit"
-#     }
-# }
-
 doc_events = {
-    "Sales Invoice": {
-        "on_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp.send_sales_invoice_whatsapp"
+    "Sales Order": {
+        "on_submit": [
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_order_confirmation",
+            # "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_delivery_location",
+        ],
     },
     "Delivery Note": {
-        "on_submit": "whatsapp_integration.erpnext_whatsapp.whatsapp_utils.send_invoice_pdf-whatsapp",
+        "on_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_delivery_notification",
     },
-    "Payment Entry": {
-        "on_submit": "whatsapp_integration.erpnext_whatsapp.whatsapp_utils.send_invoice_pdf_whatsapp"
-
+    "Sales Invoice": {
+        "on_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_invoice_notification"
     },
-    
+    "Payment Entry":{
+        "on_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_payment_notification"
+    }
 }
+
 
 # Scheduled Tasks
 # ---------------
