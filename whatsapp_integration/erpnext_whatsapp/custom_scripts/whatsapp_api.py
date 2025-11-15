@@ -1,5 +1,5 @@
 import frappe
-from whatsapp_integration.erpnext_whatsapp.whatsapp_utils import send_text_message, send_location_message,send_document
+from whatsapp_integration.erpnext_whatsapp.whatsapp_utils import send_text_message, send_location_message
 
 def send_order_confirmation(doc, method):
     """
