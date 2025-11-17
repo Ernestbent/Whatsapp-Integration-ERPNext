@@ -1,7 +1,7 @@
 import frappe
 import requests
 
-def send_proforma_whatsapp(doc, method):
+def send_sales_order(doc, method):
     """
     Send Sales Invoice via WhatsApp
     Hook this in hooks.py to Sales Invoice
@@ -25,12 +25,12 @@ def send_proforma_whatsapp(doc, method):
     # Generate PDF of the Sales Invoice
     try:
         pdf_bytes = frappe.get_print(
-            doctype="Sales Invoice",
+            doctype="Sales Order",
             name=doc.name,
-            print_format="Invoice Printing",  # Specify the custom print format
+            print_format="Sales Order Print",  # Specify the custom print format
             as_pdf=True
         )
-        print(f" PDF generated using 'Invoice Printing' format (size: {len(pdf_bytes)} bytes)")
+        print(f" PDF generated using 'Sales Order Print' format (size: {len(pdf_bytes)} bytes)")
     except Exception as e:
         print(f"PDF FAILED: {str(e)}")
         frappe.log_error(f"PDF Error: {e}", "WhatsApp PDF Generation")

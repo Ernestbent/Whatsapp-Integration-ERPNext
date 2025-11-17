@@ -165,7 +165,12 @@ doc_events = {
         "on_submit": [          
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_invoice_notification",
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.upload_media_whatsapp_cloud.send_proforma_whatsapp",
-            ]
+            ],
+    "Sales Order":{
+        "on_submit": {
+            "whatsapp_integration.eprnext_whatsapp.custom_scripts.send_sales_order.send_sales_orders"
+        }
+    }
     }
 }
 
