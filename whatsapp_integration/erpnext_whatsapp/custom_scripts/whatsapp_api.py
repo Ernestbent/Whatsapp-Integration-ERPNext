@@ -161,8 +161,3 @@ Thank you for your prompt payment!
     except Exception as e:
         frappe.log_error(f"WhatsApp payment notification error: {str(e)}", "WhatsApp Event")
         frappe.msgprint(f"Error sending WhatsApp payment notification: {str(e)}", indicator="red")
-
-#####Send the document as a PDF when certain documents are saved     
-# 
-
-##Upload media to Whatsapp and then send the document as media message

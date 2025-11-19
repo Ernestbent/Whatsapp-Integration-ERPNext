@@ -1,13 +1,12 @@
 import frappe
 import requests
 
-def send_sales_order_document(doc, method):
+def send_delivery_note(doc, method):
     """
-    Send Sales Order via WhatsApp
-    Hook this in hooks.py to Sales Order
+    Send Delivery Note via WhatsApp
+    Hook this in hooks.py to Delivery Note
     """
-
-    # ------------------------------- 
+    # -------------------------------
     # 1. Get WhatsApp credentials
     # -------------------------------
     settings = frappe.get_single("Whatsapp Setting")
@@ -15,20 +14,17 @@ def send_sales_order_document(doc, method):
     WHATSAPP_TOKEN = settings.get("access_token")
     API_VERSION = "v24.0"
 
-    print("=== WhatsApp Settings ===")
-    print(f"PHONE_NUMBER_ID: {PHONE_NUMBER_ID}")
-    print(f"ACCESS_TOKEN length: {len(WHATSAPP_TOKEN) if WHATSAPP_TOKEN else 'None'}")
-
     if not PHONE_NUMBER_ID or not WHATSAPP_TOKEN:
+        print("ERROR: WhatsApp credentials missing in 'Whatsapp Setting'")
         frappe.log_error("WhatsApp credentials missing", "WhatsApp Config")
-        frappe.msgprint("Configure WhatsApp Setting first.", indicator="red")
+        frappe.msgprint("Configure Whatsapp Setting first.", indicator="red")
         return
 
     # -------------------------------
     # 2. Get Customer WhatsApp number
     # -------------------------------
     if not doc.customer:
-        frappe.msgprint("No customer selected for this Sales Order", indicator="red")
+        frappe.msgprint("No customer selected for this Delivery Note", indicator="red")
         return
 
     customer_doc = frappe.get_doc("Customer", doc.customer)
@@ -47,16 +43,16 @@ def send_sales_order_document(doc, method):
         frappe.msgprint(f"Customer {doc.customer} has no WhatsApp number set", indicator="red")
         return
 
-    print(f"TARGET: {to_whatsapp} for Sales Order {doc.name}")
+    print(f"TARGET: {to_whatsapp} for Delivery Note {doc.name}")
 
     # -------------------------------
     # 3. Generate PDF
     # -------------------------------
     try:
         pdf_bytes = frappe.get_print(
-            doctype="Sales Order",
+            doctype="Delivery Note",
             name=doc.name,
-            print_format="Sales Order Print",
+            print_format="Delivery Note",  # Specify your print format
             as_pdf=True
         )
         print(f"PDF generated (size: {len(pdf_bytes)} bytes)")
@@ -66,17 +62,17 @@ def send_sales_order_document(doc, method):
         return
 
     # -------------------------------
-    # 4. Upload PDF to WhatsApp Cloud
+    # 4. Upload PDF to WhatsApp Cloud API
     # -------------------------------
     upload_url = f"https://graph.facebook.com/{API_VERSION}/{PHONE_NUMBER_ID}/media"
     headers = {"Authorization": f"Bearer {WHATSAPP_TOKEN}"}
     files = {
-        "file": (f"SalesOrder_{doc.name}.pdf", pdf_bytes, "application/pdf"),
+        "file": (f"DeliveryNote_{doc.name}.pdf", pdf_bytes, "application/pdf"),
         "type": (None, "application/pdf"),
         "messaging_product": (None, "whatsapp")
     }
 
-    print("Uploading PDF to WhatsApp...")
+    print("📤 Uploading PDF to WhatsApp...")
     try:
         upload_resp = requests.post(upload_url, headers=headers, files=files, timeout=30)
         upload_resp.raise_for_status()
@@ -94,25 +90,25 @@ def send_sales_order_document(doc, method):
     # 5. Send WhatsApp message
     # -------------------------------
     msg_url = f"https://graph.facebook.com/{API_VERSION}/{PHONE_NUMBER_ID}/messages"
+    caption = f"Delivery Note from {doc.company}"
+
     payload = {
         "messaging_product": "whatsapp",
         "to": to_whatsapp,
         "type": "document",
         "document": {
             "id": media_id,
-            "filename": f"SalesOrder_{doc.name}.pdf",
-            "caption": f"Sales Order from {doc.company}"
+            "filename": f"DeliveryNote_{doc.name}.pdf",
+            "caption": caption
         }
     }
 
-    print("Sending WhatsApp message...")
-    print(f"Payload: {payload}")
-
+    print(f"📨 Sending message to {to_whatsapp}...")
     try:
         msg_resp = requests.post(msg_url, json=payload, headers=headers, timeout=30)
         msg_resp.raise_for_status()
         print(f"SENT SUCCESSFULLY to {to_whatsapp}!")
-        doc.add_comment("Comment", f"WhatsApp Sales Order sent to {to_whatsapp}")
+        doc.add_comment("Comment", f"WhatsApp Delivery Note sent to {to_whatsapp}")
     except Exception as e:
         error_msg = str(e)
         if 'msg_resp' in locals():

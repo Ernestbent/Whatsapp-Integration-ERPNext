@@ -161,16 +161,29 @@ app_license = "mit"
 # }
 
 doc_events = {
+    "Sales Order": {
+        "on_submit": [
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_order_confirmation",
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_sales_order.send_sales_order_document",
+            ]
+    },
     "Sales Invoice": {
-        "on_submit": [          
+        "on_submit": [
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_invoice_notification",
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.upload_media_whatsapp_cloud.send_proforma_whatsapp",
-            ],
-    "Sales Order":{
-        "on_submit": {
-            "whatsapp_integration.eprnext_whatsapp.custom_scripts.send_sales_order.send_sales_orders"
-        }
-    }
+        ]
+    },
+    "Delivery Note":{
+        "on_submit": [
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_delivery_notification",
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.upload_delivery_note_document.send_delivery_note",
+        ]
+    },
+    "Payment Entry":{
+        "on_submit": [
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_payment_notification",
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.payment_entry_notificatio.send_payment_document",
+        ]
     }
 }
 
