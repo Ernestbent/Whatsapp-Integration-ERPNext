@@ -6,10 +6,8 @@ def send_sales_order_document(doc, method):
     Send Sales Order via WhatsApp
     Hook this in hooks.py to Sales Order
     """
-
-    # ------------------------------- 
-    # 1. Get WhatsApp credentials
-    # -------------------------------
+    
+    # Get WhatsApp credentials
     settings = frappe.get_single("Whatsapp Setting")
     PHONE_NUMBER_ID = settings.get("phone_number_id")
     WHATSAPP_TOKEN = settings.get("access_token")
@@ -24,9 +22,7 @@ def send_sales_order_document(doc, method):
         frappe.msgprint("Configure WhatsApp Setting first.", indicator="red")
         return
 
-    # -------------------------------
-    # 2. Get Customer WhatsApp number
-    # -------------------------------
+    # Get Customer WhatsApp number
     if not doc.customer:
         frappe.msgprint("No customer selected for this Sales Order", indicator="red")
         return
@@ -49,9 +45,7 @@ def send_sales_order_document(doc, method):
 
     print(f"TARGET: {to_whatsapp} for Sales Order {doc.name}")
 
-    # -------------------------------
-    # 3. Generate PDF
-    # -------------------------------
+    # Generate PDF
     try:
         pdf_bytes = frappe.get_print(
             doctype="Sales Order",
@@ -65,9 +59,7 @@ def send_sales_order_document(doc, method):
         frappe.msgprint(f"Failed to generate PDF: {str(e)}", indicator="red")
         return
 
-    # -------------------------------
-    # 4. Upload PDF to WhatsApp Cloud
-    # -------------------------------
+    # Upload PDF to WhatsApp Cloud
     upload_url = f"https://graph.facebook.com/{API_VERSION}/{PHONE_NUMBER_ID}/media"
     headers = {"Authorization": f"Bearer {WHATSAPP_TOKEN}"}
     files = {
@@ -90,9 +82,7 @@ def send_sales_order_document(doc, method):
         frappe.msgprint("Failed to upload document to WhatsApp", indicator="red")
         return
 
-    # -------------------------------
-    # 5. Send WhatsApp message
-    # -------------------------------
+    # Send WhatsApp message
     msg_url = f"https://graph.facebook.com/{API_VERSION}/{PHONE_NUMBER_ID}/messages"
     payload = {
         "messaging_product": "whatsapp",

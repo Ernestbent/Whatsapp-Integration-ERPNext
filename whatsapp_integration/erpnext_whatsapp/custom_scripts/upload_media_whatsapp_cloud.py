@@ -7,7 +7,7 @@ def send_proforma_whatsapp(doc, method):
     Hook this in hooks.py to Sales Invoice
     """
 
-    # 1. Get WhatsApp credentials
+    # Get WhatsApp credentials
     settings = frappe.get_single("Whatsapp Setting")
     PHONE_NUMBER_ID = settings.get("phone_number_id")
     WHATSAPP_TOKEN = settings.get("access_token")
@@ -18,7 +18,7 @@ def send_proforma_whatsapp(doc, method):
         frappe.msgprint("Configure Whatsapp Setting first.", indicator="red")
         return
 
-    # 🔥 Added: Fetch WhatsApp number from Customer
+    # Fetch WhatsApp number from Customer
     if not doc.customer:
         frappe.msgprint("Select a customer first.", indicator="red")
         return

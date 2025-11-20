@@ -64,7 +64,7 @@ def send_payment_document(doc, method):
     # Send the document via whatsapp message
     msg_url = f"https://graph.facebook.com/{API_VERSION}/{PHONE_NUMBER_ID}/messages"
     
-    # Ultra Simple message
+    # Message Payload
     caption = f"""
 {doc.company}"""    
     payload = {
