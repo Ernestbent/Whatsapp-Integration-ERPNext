@@ -43,7 +43,11 @@ app_license = "mit"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {
+    "Whatsapp Message": "public/js/send_reply.js",
+    "Whatsapp Live Chat": "public/js/whatsapp_live_chat.js"
+}
+
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -165,7 +169,11 @@ doc_events = {
         "on_submit": [
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_order_confirmation",
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_sales_order.send_sales_order_background",
-            ]
+           
+            ],
+        "Sales Order": {
+            "on_update_after_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.notifications_on_dispacth.send_dispatch_notification",
+    }
     },
     "Sales Invoice": {
         "on_submit": [
@@ -189,12 +197,12 @@ doc_events = {
 
 # Scheduled Tasks
 # ---------------
-scheduler_events = {
-	"daily": [
-		"whatsapp_integration.erpnext_whatsapp.background_jobs.send_report_daily.send_general_ledger_email"
-	],
+# scheduler_events = {
+# 	"daily": [
+# 		"whatsapp_integration.erpnext_whatsapp.background_jobs.send_report_daily.send_general_ledger_email"
+# 	],
 	
-}
+# }
 
 # Testing
 # -------
