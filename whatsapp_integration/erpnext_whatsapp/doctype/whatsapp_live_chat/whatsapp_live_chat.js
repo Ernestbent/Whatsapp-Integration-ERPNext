@@ -115,7 +115,7 @@ frappe.ui.form.on("Whatsapp Live Chat", {
             }
         });
 
-        // Send message
+        // Send message button
         $(document).off("click","#send_btn").on("click","#send_btn",function(){
             const txt=$("#msg_input").val().trim();
             if(!txt) return;
@@ -133,7 +133,7 @@ frappe.ui.form.on("Whatsapp Live Chat", {
             });
         });
 
-        // Enter to send
+        // Press Enter to send
         $(document).off("keypress","#msg_input").on("keypress","#msg_input",function(e){
             if(e.key==="Enter"){
                 e.preventDefault();
