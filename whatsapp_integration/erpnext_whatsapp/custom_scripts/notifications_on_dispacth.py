@@ -43,7 +43,7 @@ def send_dispatch_notification(doc, method=None):
             )
             return
         
-        # Prepare message
+        # Prepare Message
         message = prepare_dispatch_message(doc)
         
         # Send WhatsApp message
@@ -55,7 +55,7 @@ def send_dispatch_notification(doc, method=None):
             # Log the notification
             log_notification(doc, customer_mobile, message, result.get("message_id"))
         else:
-            print(f"❌ Failed to send notification: {result.get('error')}")
+            print(f"Failed to send notification: {result.get('error')}")
         
     except Exception as e:
         frappe.log_error(
@@ -120,7 +120,7 @@ def prepare_dispatch_message(doc):
     # Get delivery date if available
     delivery_info = ""
     if hasattr(doc, 'delivery_date') and doc.delivery_date:
-        delivery_info = f"\n📅 Expected Delivery: {frappe.utils.formatdate(doc.delivery_date)}"
+        delivery_info = f"\n Expected Delivery: {frappe.utils.formatdate(doc.delivery_date)}"
     
     # Get tracking number if available
     tracking_info = ""

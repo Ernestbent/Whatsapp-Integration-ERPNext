@@ -20,9 +20,9 @@ def receive_whatsapp():
             return handle_webhook_data()
         else:
             return {"status": "error", "message": "Method not allowed"}
-    except Exception as e:
+    except Exception:
         frappe.log_error(frappe.get_traceback(), "WhatsApp Webhook Error")
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": "Internal Error"}
 
 def handle_verification():
     mode = frappe.request.args.get("hub.mode")
@@ -37,10 +37,7 @@ def handle_verification():
 def handle_webhook_data():
     raw = frappe.local.request.get_data(as_text=True)
 
-    if is_duplicate_webhook(raw):
-        return {"status": "received"}
-
-    if not raw:
+    if is_duplicate_webhook(raw) or not raw:
         return {"status": "received"}
 
     try:
@@ -58,9 +55,13 @@ def process_whatsapp_message(payload):
     for entry in payload.get("entry", []):
         for change in entry.get("changes", []):
             value = change.get("value", {})
-            messages = value.get("messages", [])
 
-            for message in messages:
+            # Handle status updates (read/delivered)
+            for status in value.get("statuses", []):
+                handle_message_status(status)
+
+            # Handle incoming messages
+            for message in value.get("messages", []):
                 msg_type = message.get('type')
                 message_text = ""
                 media_id = ""
@@ -92,16 +93,51 @@ def process_whatsapp_message(payload):
                 check_and_update_opt_in(from_number, message_text)
                 save_whatsapp_message(message, message_text, media_id)
 
+def handle_message_status(status):
+    """Handle message status updates (sent, delivered, read, failed)"""
+    try:
+        message_id = status.get("id")
+        status_value = status.get("status")
+        recipient = status.get("recipient_id")
+        timestamp = status.get("timestamp")
+
+        message_doc = frappe.db.get_value(
+            "Whatsapp Message",
+            {"whatsapp_message_id": message_id},
+            "name"
+        )
+
+        if message_doc:
+            frappe.db.set_value("Whatsapp Message", message_doc, {
+                "message_status": status_value,
+                "status_timestamp": datetime.fromtimestamp(int(timestamp)).strftime("%Y-%m-%d %H:%M:%S") if timestamp else None
+            })
+            frappe.db.commit()
+
+            # Publish realtime status update for dynamic ticks
+            frappe.publish_realtime(
+                "whatsapp_message_status_changed",
+                {
+                    "contact_number": recipient,
+                    "message_name": message_doc,
+                    "new_status": status_value,
+                    "timestamp": datetime.fromtimestamp(int(timestamp)).strftime("%H:%M:%S") if timestamp else frappe.utils.now_datetime().strftime("%H:%M:%S")
+                },
+                after_commit=True
+            )
+
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "WhatsApp Status Update Error")
+
 def save_whatsapp_message(message, message_text, media_id=""):
-    """Save incoming WhatsApp message and update/create Whatsapp Live Chat"""
     try:
         from_number = message.get("from", "")
+        message_id = message.get("id", "")
         timestamp_unix = message.get("timestamp", "")
         timestamp_str = datetime.fromtimestamp(int(timestamp_unix)).strftime("%H:%M:%S") if timestamp_unix else frappe.utils.now_datetime().strftime("%H:%M:%S")
         customer_name = find_customer_by_whatsapp(from_number)
 
-        # Save to Whatsapp Message
-        msg_doc = frappe.get_doc({
+        msg_doc_dict = {
             "doctype": "Whatsapp Message",
             "from_number": from_number,
             "message_type": message.get("type", ""),
@@ -109,27 +145,40 @@ def save_whatsapp_message(message, message_text, media_id=""):
             "media_id": media_id,
             "timestamp": timestamp_str,
             "customer": customer_name,
-            "custom_status": "Incoming"
-        })
+            "custom_status": "Incoming",
+            "whatsapp_message_id": message_id,
+            "message_status": "received"
+        }
+
+        msg_doc = frappe.get_doc(msg_doc_dict)
         msg_doc.insert(ignore_permissions=True)
 
-        # AUTO CREATE OR UPDATE Whatsapp Live Chat using "contact" field
+        # Publish realtime new message
+        frappe.publish_realtime(
+            "whatsapp_new_message",
+            {
+                "contact_number": from_number,
+                "message_name": msg_doc.name,
+                "timestamp": timestamp_str,
+            },
+            after_commit=True,
+        )
+
+        # Update or create Whatsapp Live Chat
         chat_doc_name = frappe.db.get_value("Whatsapp Live Chat", {"contact": from_number}, "name")
 
         if chat_doc_name:
-            # Update existing
             unread_count = frappe.db.get_value("Whatsapp Live Chat", chat_doc_name, "unread_count") or 0
             frappe.db.set_value("Whatsapp Live Chat", chat_doc_name, {
-                "contact": from_number,  # Ensure it's saved
+                "contact": from_number,
                 "last_message": message_text[:100],
                 "last_message_time": frappe.utils.now(),
                 "unread_count": unread_count + 1
             })
         else:
-            # Create new
             frappe.get_doc({
                 "doctype": "Whatsapp Live Chat",
-                "contact": from_number,  # THIS IS YOUR FIELD
+                "contact": from_number,
                 "last_message": message_text[:100],
                 "last_message_time": frappe.utils.now(),
                 "unread_count": 1
@@ -138,7 +187,7 @@ def save_whatsapp_message(message, message_text, media_id=""):
         frappe.db.commit()
         return msg_doc.name
 
-    except Exception as e:
+    except Exception:
         frappe.log_error(frappe.get_traceback(), "Whatsapp Message Save FAILED")
         raise
 

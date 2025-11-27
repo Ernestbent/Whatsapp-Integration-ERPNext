@@ -9,8 +9,10 @@
   "from_number",
   "message_type",
   "message",
+  "message_status",
   "column_break_kzpm",
   "media_id",
+  "message_id",
   "timestamp",
   "customer"
  ],
@@ -56,12 +58,22 @@
    "fieldtype": "Link",
    "label": "Customer",
    "options": "Customer"
+  },
+  {
+   "fieldname": "message_id",
+   "fieldtype": "Data",
+   "label": "Message ID"
+  },
+  {
+   "fieldname": "message_status",
+   "fieldtype": "Data",
+   "label": "Message Status"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-22 13:11:54.033552",
+ "modified": "2025-11-27 12:28:02.410208",
  "modified_by": "Administrator",
  "module": "ERPNext Whatsapp",
  "name": "Whatsapp Message",

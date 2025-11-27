@@ -1,14 +1,15 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:contact",
+ "autoname": "field:contact_name",
  "creation": "2025-11-25 15:34:02.675948",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_zu0n",
   "chat_area",
-  "contact"
+  "contact",
+  "contact_name"
  ],
  "fields": [
   {
@@ -25,12 +26,18 @@
    "fieldtype": "Data",
    "label": "Contact",
    "unique": 1
+  },
+  {
+   "fieldname": "contact_name",
+   "fieldtype": "Data",
+   "label": "Contact Name",
+   "unique": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-25 17:12:10.122518",
+ "modified": "2025-11-27 13:13:21.705568",
  "modified_by": "Administrator",
  "module": "ERPNext Whatsapp",
  "name": "Whatsapp Live Chat",
