@@ -280,3 +280,6 @@ doc_events = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+csrf_exempt = ["/api/method/whatsapp_integration.whatsapp_webhook.receive_whatsapp"]
+
+
