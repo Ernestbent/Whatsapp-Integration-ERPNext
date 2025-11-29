@@ -621,9 +621,7 @@ frappe.ui.form.on("Whatsapp Live Chat", {
             }
         });
 
-        // ========================
         // Auto-refresh every 30 seconds
-        // ========================
         clearInterval(frm._interval);
         frm._interval=setInterval(()=>{
             if(!frm.is_dirty()){
