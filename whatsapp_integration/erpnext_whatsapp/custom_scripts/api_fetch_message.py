@@ -19,18 +19,34 @@ def get_unread_messages():
         ORDER BY wm.timestamp DESC
         LIMIT 5
     """, as_dict=True)
-    
     return messages
 
 @frappe.whitelist()
 def mark_message_read(message_name):
     """Mark message as read WITHOUT updating modified timestamp - COMPLETELY SILENT"""
-    # Use raw SQL to update ONLY the custom_read field without triggering modified
+    # we Use raw SQL to update ONLY the custom_read field without triggering modified
     frappe.db.sql("""
         UPDATE `tabWhatsapp Message`
         SET custom_read = 1
         WHERE name = %s
     """, (message_name,))
-    
     frappe.db.commit()
     return {"success": True}
+
+@frappe.whitelist()
+def mark_all_read_by_number(from_number):
+    """Mark ALL messages from a specific number as read - BULK UPDATE"""
+    frappe.db.sql("""
+        UPDATE `tabWhatsapp Message`
+        SET custom_read = 1
+        WHERE from_number = %s
+        AND custom_status = 'Incoming'
+        AND custom_read = 0
+    """, (from_number,))
+    
+    frappe.db.commit()
+    
+    return {
+        "success": True, 
+        "message": f"All messages from {from_number} marked as read"
+    }

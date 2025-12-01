@@ -3,9 +3,7 @@ frappe.ui.form.on("Whatsapp Live Chat", {
         const chat_field = frm.get_field("chat_area");
         if (!chat_field) return;
 
-        // ========================
-        // Build WhatsApp UI
-        // ========================
+        //  WhatsApp UI
         chat_field.$wrapper.html(`
             <div id="wp_ui" style="
                 height: 100%;
@@ -309,18 +307,14 @@ frappe.ui.form.on("Whatsapp Live Chat", {
 
         const contact_number = frm.doc.contact;
 
-        // ========================
         // Auto-expand textarea
-        // ========================
         const textarea = $("#msg_input");
         textarea.on("input", function() {
             this.style.height = "auto";
             this.style.height = Math.min(this.scrollHeight, 100) + "px";
         });
 
-        // ========================
         // WhatsApp ticks (Proper SVG)
-        // ========================
         function get_whatsapp_ticks(status) {
             // Debug: log the status to console
             console.log("Message status:", status);
@@ -393,9 +387,7 @@ frappe.ui.form.on("Whatsapp Live Chat", {
             return `${hours}:${minutes} ${ampm}`;
         }
 
-        // ========================
         // Render media content
-        // ========================
         function render_media_content(message){
             const type = message.message_type;
             const file_url = message.custom_document;
@@ -454,9 +446,7 @@ frappe.ui.form.on("Whatsapp Live Chat", {
             }
         }
 
-        // ========================
         // Load messages
-        // ========================
         function load_messages(){
             frappe.call({
                 method:"frappe.client.get_list",
@@ -515,9 +505,7 @@ frappe.ui.form.on("Whatsapp Live Chat", {
 
         load_messages();
 
-        // ========================
         // Emoji picker
-        // ========================
         const emojis=[
             '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙',
             '😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥',
@@ -555,9 +543,7 @@ frappe.ui.form.on("Whatsapp Live Chat", {
             }
         });
 
-        // ========================
         // Send message
-        // ========================
         function send_message(){
             const txt=$("#msg_input").val().trim();
             if(!txt) return;
@@ -591,18 +577,15 @@ frappe.ui.form.on("Whatsapp Live Chat", {
             }
         });
 
-        // ========================
         // Refresh button
-        // ========================
         $(document).off("click","#refresh_chat").on("click","#refresh_chat",function(){
             $(this).css("transform","rotate(360deg)").css("transition","transform 0.5s");
             setTimeout(()=>$(this).css("transform","rotate(0deg)"),500);
             load_messages();
         });
 
-        // ========================
         // Real-time updates
-        // ========================
+
         frappe.realtime.on("whatsapp_new_message",(data)=>{
             if(data.contact_number===contact_number){
                 load_messages();
