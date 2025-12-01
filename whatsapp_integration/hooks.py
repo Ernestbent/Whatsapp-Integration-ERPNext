@@ -26,7 +26,10 @@ app_license = "mit"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/whatsapp_integration/css/whatsapp_integration.css"
-# app_include_js = "/assets/whatsapp_integration/js/whatsapp_integration.js"
+app_include_js = [
+    "/assets/whatsapp_integration/js/whatsapp_notification.js"
+]
+
 
 # include js, css files in header of web template
 # web_include_css = "/assets/whatsapp_integration/css/whatsapp_integration.css"
