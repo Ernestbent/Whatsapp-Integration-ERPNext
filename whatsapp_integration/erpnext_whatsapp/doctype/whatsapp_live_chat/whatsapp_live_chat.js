@@ -604,13 +604,13 @@ frappe.ui.form.on("Whatsapp Live Chat", {
             }
         });
 
-        // Auto-refresh every 30 seconds
-        clearInterval(frm._interval);
-        frm._interval=setInterval(()=>{
-            if(!frm.is_dirty()){
-                load_messages();
-            }
-        }, 30000);
+        // // Auto-refresh every 30 seconds
+        // clearInterval(frm._interval);
+        // frm._interval=setInterval(()=>{
+        //     if(!frm.is_dirty()){
+        //         load_messages();
+        //     }
+        // }, 30000);
         
         frm.on_unload=()=>clearInterval(frm._interval);
 
