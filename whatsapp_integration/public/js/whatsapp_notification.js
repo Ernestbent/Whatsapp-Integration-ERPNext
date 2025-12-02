@@ -185,7 +185,7 @@ function update_whatsapp_notifications() {
     });
 }
 
-// PERFECT ROUTING + AUTO CREATE CHAT
+// FIXED: NOW SHOWS LATEST MESSAGE AS PREVIEW
 function render_whatsapp_messages(messages) {
     const container = $('.whatsapp-messages-container');
     if (!messages || messages.length === 0) {
@@ -210,7 +210,10 @@ function render_whatsapp_messages(messages) {
             };
         }
         grouped[num].messages.push(msg);
-        if (msg.creation > grouped[num].latest_time) grouped[num].latest_time = msg.creation;
+        // Update latest_time if this message is newer
+        if (msg.creation > grouped[num].latest_time) {
+            grouped[num].latest_time = msg.creation;
+        }
     });
 
     const sorted = Object.keys(grouped)
@@ -221,11 +224,15 @@ function render_whatsapp_messages(messages) {
     sorted.forEach(group => {
         const d = group.data;
         const count = d.messages.length;
-        const latest = d.messages[d.messages.length - 1];
+        
+        // FIXED: Sort messages by creation date and get the LATEST one
+        const sorted_messages = d.messages.sort((a, b) => new Date(b.creation) - new Date(a.creation));
+        const latest = sorted_messages[0]; // Now gets the most recent message
+        
         const text = (latest.message || "").substring(0, 70) + ((latest.message || "").length > 70 ? "..." : "");
         const time = frappe.datetime.comment_when(d.latest_time);
 
-        // THIS IS THE KEY: SMART URL THAT CREATES CHAT IF MISSING
+        // SMART URL THAT CREATES CHAT IF MISSING
         const smart_url = d.live_chat_name
             ? `/app/whatsapp-live-chat/${d.live_chat_name}`
             : `/app/whatsapp-live-chat/new?contact=${encodeURIComponent(group.from_number)}`;
