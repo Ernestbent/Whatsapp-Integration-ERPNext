@@ -10,7 +10,7 @@ frappe.ui.form.on("Whatsapp Message", {
                         {
                             label: "Message",
                             fieldname: "msg",
-                            fieldtype: "Small Text",   // clean text, no HTML
+                            fieldtype: "Small Text",   
                             reqd: 1
                         }
                     ],
@@ -23,7 +23,6 @@ frappe.ui.form.on("Whatsapp Message", {
                             args: {
                                 to_number: frm.doc.from_number,
                                 message_body: values.msg.trim()
-                                // ← removed reply_to_message_id completely (you don't have the field)
                             },
                             freeze: true,
                             freeze_message: "Sending to WhatsApp...",

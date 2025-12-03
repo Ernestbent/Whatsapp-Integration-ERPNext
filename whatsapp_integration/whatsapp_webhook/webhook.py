@@ -336,7 +336,7 @@ def update_chat_live(customer, number, last_message):
 def check_and_update_opt_in(number, text):
     if not number or not text:
         return
-    keywords = ["yes", "opt in", "subscribe", "agree", "accept"]
+    keywords = ["yes", "opt in", "subscribe", "agree", "accept", "i want to receive updates"]
     if any(k in text.lower() for k in keywords):
         cust = find_customer_by_whatsapp(number)
         if cust and not frappe.get_value("Customer", cust, "custom_opt_in"):
