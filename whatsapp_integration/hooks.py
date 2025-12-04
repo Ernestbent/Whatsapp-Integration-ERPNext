@@ -49,7 +49,8 @@ app_include_js = [
 doctype_js = {
     "Whatsapp Message": "public/js/send_reply.js",
     "Whatsapp Live Chat": "public/js/whatsapp_live_chat.js",  
-    "Whatsapp Setting" : "public/js/create_chats_customers.js",    
+    "Whatsapp Setting" : "public/js/create_chats_customers.js",
+    "Whatsapp Message Template": "public/js/message_template_button.js",   
 }
 
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}

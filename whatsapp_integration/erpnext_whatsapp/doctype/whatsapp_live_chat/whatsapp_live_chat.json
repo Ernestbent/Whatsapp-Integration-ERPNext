@@ -24,6 +24,7 @@
   {
    "fieldname": "contact",
    "fieldtype": "Data",
+   "in_standard_filter": 1,
    "label": "Contact",
    "unique": 1
   },
@@ -37,7 +38,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-27 13:13:21.705568",
+ "modified": "2025-12-03 16:43:07.272863",
  "modified_by": "Administrator",
  "module": "ERPNext Whatsapp",
  "name": "Whatsapp Live Chat",

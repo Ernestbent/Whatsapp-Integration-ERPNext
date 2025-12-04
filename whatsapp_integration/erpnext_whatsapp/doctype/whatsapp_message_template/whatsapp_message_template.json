@@ -1,0 +1,177 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:template_name",
+ "creation": "2025-12-04 10:40:42.817056",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "basic_section",
+  "template_name",
+  "id",
+  "category",
+  "language",
+  "column_break_mlwg",
+  "status",
+  "parameter_format",
+  "header_component_section",
+  "type",
+  "format",
+  "text",
+  "column_break_dguq",
+  "media_example",
+  "body_component_section",
+  "body_text",
+  "body_parameters",
+  "footer_section",
+  "footer_text",
+  "buttons_section",
+  "table_pkhd"
+ ],
+ "fields": [
+  {
+   "fieldname": "basic_section",
+   "fieldtype": "Section Break",
+   "label": "Basic"
+  },
+  {
+   "fieldname": "template_name",
+   "fieldtype": "Data",
+   "label": "Template Name",
+   "unique": 1
+  },
+  {
+   "default": "utility",
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "label": "Category",
+   "options": "marketing\nutility\nauthentication"
+  },
+  {
+   "default": "en_US",
+   "fieldname": "language",
+   "fieldtype": "Select",
+   "label": "Language",
+   "options": "en_US"
+  },
+  {
+   "fieldname": "column_break_mlwg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Data",
+   "label": "Status",
+   "options": "Draft\nApproved\nSubmitted\nRejected"
+  },
+  {
+   "fieldname": "parameter_format",
+   "fieldtype": "Select",
+   "label": "Parameter Format",
+   "options": "named\nnumbered"
+  },
+  {
+   "fieldname": "header_component_section",
+   "fieldtype": "Section Break",
+   "label": "Header Component"
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "documentation\nimage\nlocation\ntext\nvideo"
+  },
+  {
+   "fieldname": "format",
+   "fieldtype": "Select",
+   "label": "Format",
+   "options": "documentation\nimage\nlocation\ntext\nvideo"
+  },
+  {
+   "description": "Only If the header is text.",
+   "fieldname": "text",
+   "fieldtype": "Data",
+   "label": "Text"
+  },
+  {
+   "fieldname": "column_break_dguq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "If type is Image,video or something that needs attaching.",
+   "fieldname": "media_example",
+   "fieldtype": "Attach",
+   "label": "Media Example"
+  },
+  {
+   "fieldname": "body_component_section",
+   "fieldtype": "Section Break",
+   "label": "Body Component "
+  },
+  {
+   "fieldname": "body_text",
+   "fieldtype": "Long Text",
+   "label": "Body Text"
+  },
+  {
+   "fieldname": "body_parameters",
+   "fieldtype": "Table",
+   "label": "Body Parameters",
+   "options": "Whatsapp Body Parameters"
+  },
+  {
+   "fieldname": "footer_section",
+   "fieldtype": "Section Break",
+   "label": "Footer"
+  },
+  {
+   "fieldname": "footer_text",
+   "fieldtype": "Data",
+   "label": "Footer Text"
+  },
+  {
+   "fieldname": "buttons_section",
+   "fieldtype": "Section Break",
+   "label": "Buttons"
+  },
+  {
+   "fieldname": "table_pkhd",
+   "fieldtype": "Table",
+   "options": "Buttons"
+  },
+  {
+   "fieldname": "id",
+   "fieldtype": "Data",
+   "label": "Meta ID",
+   "unique": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-12-04 12:15:53.556664",
+ "modified_by": "Administrator",
+ "module": "ERPNext Whatsapp",
+ "name": "Whatsapp Message Template",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
