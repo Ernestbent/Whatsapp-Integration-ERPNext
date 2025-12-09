@@ -209,7 +209,7 @@ def send_sales_order_background(doc, method):
         timeout=300,
         enqueue_after_commit=True
     )
-    frappe.msgprint("Success")
+    # frappe.msgprint("Success")
 
 
 def send_sales_order_whatsapp(docname):

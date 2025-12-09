@@ -28,7 +28,7 @@ def enqueue_whatsapp(to, message=None, location=False, latitude=None, longitude=
 def send_order_confirmation(doc, method):
     phone = get_customer_phone(doc.customer)
     if not phone:
-        frappe.msgprint(f"Customer {doc.customer} has no WhatsApp number", indicator="red")
+        # frappe.msgprint(f"Customer {doc.customer} has no WhatsApp number", indicator="red")
         return
 
     message = f"""
@@ -49,7 +49,7 @@ Thank you for your business!
 def send_invoice_notification(doc, method):
     phone = get_customer_phone(doc.customer)
     if not phone:
-        frappe.msgprint(f"Customer {doc.customer} has no WhatsApp number", indicator="red")
+        # frappe.msgprint(f"Customer {doc.customer} has no WhatsApp number", indicator="red")
         return
 
     message = f"""
@@ -70,7 +70,7 @@ Please make payment at your earliest convenience.
 def send_delivery_notification(doc, method):
     phone = get_customer_phone(doc.customer)
     if not phone:
-        frappe.msgprint(f"Customer {doc.customer} has no WhatsApp number", indicator="red")
+        # frappe.msgprint(f"Customer {doc.customer} has no WhatsApp number", indicator="red")
         return
 
     message = f"""
@@ -91,7 +91,7 @@ Your delivery is on the way.
 def send_delivery_location(doc, method):
     phone = get_customer_phone(doc.customer)
     if not phone:
-        frappe.msgprint(f"Customer {doc.customer} has no WhatsApp number", indicator="red")
+        # frappe.msgprint(f"Customer {doc.customer} has no WhatsApp number", indicator="red")
         return
 
     enqueue_whatsapp(to=phone, message=None, location=True,

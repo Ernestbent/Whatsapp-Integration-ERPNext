@@ -15,10 +15,7 @@ def wa_log(title, message=""):
 # Save raw payload
 def save_raw_payload(raw_json):
     try:
-        try:
-            payload_obj = json.loads(raw_json)
-        except:
-            payload_obj = raw_json
+        payload_obj = json.loads(raw_json) if isinstance(raw_json, str) else raw_json
         frappe.get_doc({
             "doctype": "Whatsapp Cloud API Payload",
             "payload": payload_obj
@@ -30,14 +27,11 @@ def save_raw_payload(raw_json):
 # Duplicate prevention
 webhook_cache = []
 MAX_CACHE_SIZE = 100
+
 def is_duplicate_webhook(raw_data):
     global webhook_cache
-    try:
-        h = hashlib.md5(raw_data.encode()).hexdigest()
-    except:
-        h = hashlib.md5(str(raw_data).encode()).hexdigest()
+    h = hashlib.md5(str(raw_data).encode()).hexdigest()
     if h in webhook_cache:
-        wa_log("Duplicate Webhook", "Skipping")
         return True
     webhook_cache.append(h)
     if len(webhook_cache) > MAX_CACHE_SIZE:
@@ -74,8 +68,6 @@ def handle_webhook_data():
     if is_duplicate_webhook(raw):
         return {"status": "received"}
 
-    wa_log("Webhook Received", raw[:1000])
-
     try:
         payload = json.loads(raw)
         process_whatsapp_message(payload)
@@ -86,18 +78,15 @@ def handle_webhook_data():
 
 def process_whatsapp_message(payload):
     if payload.get("object") != "whatsapp_business_account":
-        wa_log("Invalid Webhook Object", str(payload.get("object")))
         return
 
     for entry in payload.get("entry", []):
         for change in entry.get("changes", []):
             value = change.get("value", {})
 
-            # Status updates
             for status in value.get("statuses", []):
                 handle_message_status(status)
 
-            # Incoming messages
             for message in value.get("messages", []):
                 handle_single_message(message)
 
@@ -110,7 +99,7 @@ def handle_message_status(status):
         if not msg_id or not new_status:
             return
 
-        msg_name = frappe.db.get_value("Whatsapp Message", {"whatsapp_message_id": msg_id}, "name")
+        msg_name = frappe.db.get_value("Whatsapp Message", {"message_id": msg_id}, "name")
         if not msg_name:
             return
 
@@ -141,6 +130,9 @@ def handle_single_message(message):
         media_id = ""
         public_file_url = None
 
+        # Get WhatsApp message ID
+        msg_id = message.get("id")
+
         if msg_type == "text":
             message_text = message.get("text", {}).get("body", "")
         elif msg_type in ["image", "document", "video", "audio", "sticker"]:
@@ -149,6 +141,10 @@ def handle_single_message(message):
             caption = media_obj.get("caption", "")
             filename = media_obj.get("filename") or f"{msg_type}_{media_id}"
             ext_map = {"image": ".jpg", "document": ".pdf", "video": ".mp4", "audio": ".ogg", "sticker": ".webp"}
+            ext_map.update({"jpeg": ".jpeg"})
+            ext = ext_map.get(msg_type, ".bin")
+            # Add more extensions to ext_map if needed
+            ext_map.update({"png": ".png", "gif": ".gif"})
             ext = ext_map.get(msg_type, ".bin")
             if "." not in filename:
                 filename += ext
@@ -166,13 +162,12 @@ def handle_single_message(message):
         else:
             message_text = f"Received {msg_type}"
 
-        check_and_update_opt_in(from_number, message_text)
-        save_whatsapp_message(message, message_text, media_id, public_file_url)
-
         customer = find_customer_by_whatsapp(from_number)
         if not customer:
             customer = ensure_customer_exists(from_number)
-        update_chat_live(customer, from_number, message_text)
+        
+        check_and_update_opt_in(from_number, message_text)
+        save_whatsapp_message(message, message_text, media_id, public_file_url, customer, msg_id)
 
     except Exception as e:
         wa_log("Message Processing Error", f"{str(e)}\n{frappe.get_traceback()}")
@@ -183,7 +178,6 @@ def download_and_save_media(media_id, filename):
     try:
         access_token = frappe.db.get_single_value("Whatsapp Setting", "access_token") or frappe.conf.get("whatsapp_access_token")
         if not access_token:
-            wa_log("No Access Token", "Cannot download media")
             return None
 
         headers = {"Authorization": f"Bearer {access_token}"}
@@ -210,18 +204,11 @@ def download_and_save_media(media_id, filename):
         wa_log("Media Download Failed", f"{str(e)}\n{frappe.get_traceback()}")
         return None
 
-def save_whatsapp_message(message, message_text, media_id="", public_file_url=None):
+def save_whatsapp_message(message, message_text, media_id="", public_file_url=None, customer=None, msg_id=None):
     try:
         from_number = message.get("from")
-        msg_id = message.get("id")
         timestamp = datetime.fromtimestamp(int(message.get("timestamp") or 0)).strftime("%H:%M:%S") if message.get("timestamp") else datetime.now().strftime("%H:%M:%S")
 
-        # Find or create customer
-        customer = find_customer_by_whatsapp(from_number)
-        if not customer:
-            customer = ensure_customer_exists(from_number)
-
-        # GET CORRECT DISPLAY NAME
         if customer:
             contact_display_name = frappe.db.get_value("Customer", customer, "customer_name")
         else:
@@ -236,15 +223,15 @@ def save_whatsapp_message(message, message_text, media_id="", public_file_url=No
             "media_id": media_id,
             "timestamp": timestamp,
             "customer": customer,
-            "contact_name": contact_display_name,  # PERFECT NAME
+            "contact_name": contact_display_name,
             "custom_status": "Incoming",
-            "whatsapp_message_id": msg_id,
+            "message_id": msg_id,  # Save in message_id
             "message_status": "received",
         })
         msg_doc.insert(ignore_permissions=True)
 
         if public_file_url:
-            frappe.db.set_value("Whatsapp Message", msg_doc.name, "custom_document", public_file_url)
+            frappe.db.set_value("Whatsapp Message", msg_doc.name, "custom_document", public_file_url, update_modified=False)
 
         frappe.db.commit()
 
@@ -254,7 +241,6 @@ def save_whatsapp_message(message, message_text, media_id="", public_file_url=No
             "timestamp": timestamp
         }, after_commit=True)
 
-        wa_log("Message Saved", f"{msg_doc.name} → {contact_display_name}")
     except Exception as e:
         wa_log("Save Message Failed", f"{str(e)}\n{frappe.get_traceback()}")
 
@@ -282,11 +268,9 @@ def ensure_customer_exists(number):
         return cust
 
     try:
-        display_num = clean[-9:]  # Last 9 digits
-        unknown_name = f"Unknown {display_num}"
         doc = frappe.get_doc({
             "doctype": "Customer",
-            "customer_name": unknown_name,
+            "customer_name": f"Unknown {clean[-9:]}",
             "customer_type": "Individual",
             "customer_group": "Individual",
             "territory": "All Territories",
@@ -294,44 +278,10 @@ def ensure_customer_exists(number):
         })
         doc.insert(ignore_permissions=True)
         frappe.db.commit()
-        wa_log("Unknown Customer Created", unknown_name)
         return doc.name
     except Exception as e:
         wa_log("Create Customer Error", str(e))
         return None
-
-def update_chat_live(customer, number, last_message):
-    try:
-        clean = ''.join(filter(str.isdigit, str(number or "")))
-        display_name = f"Unknown {clean[-9:]}" if not customer else frappe.db.get_value("Customer", customer, "customer_name")
-
-        existing = None
-        if customer:
-            existing = frappe.db.get_value("Whatsapp Chat Live", {"customer": customer}, "name")
-        if not existing:
-            existing = frappe.db.get_value("Whatsapp Chat Live", {"contact": ["like", f"%{clean}"]}, "name")
-
-        now = frappe.utils.now()
-
-        if existing:
-            frappe.db.set_value("Whatsapp Chat Live", existing, {
-                "contact_name": display_name,
-                "last_message": last_message,
-                "last_time": now
-            })
-        else:
-            frappe.get_doc({
-                "doctype": "Whatsapp Chat Live",
-                "contact": clean,
-                "contact_name": display_name,
-                "customer": customer,
-                "last_message": last_message,
-                "last_time": now
-            }).insert(ignore_permissions=True)
-
-        frappe.db.commit()
-    except Exception as e:
-        wa_log("Chat Live Update Error", str(e))
 
 def check_and_update_opt_in(number, text):
     if not number or not text:
@@ -340,6 +290,5 @@ def check_and_update_opt_in(number, text):
     if any(k in text.lower() for k in keywords):
         cust = find_customer_by_whatsapp(number)
         if cust and not frappe.get_value("Customer", cust, "custom_opt_in"):
-            frappe.db.set_value("Customer", cust, "custom_opt_in", 1)
+            frappe.db.set_value("Customer", cust, "custom_opt_in", 1, update_modified=False)
             frappe.db.commit()
-            wa_log("Opt-in Updated", f"Customer: {cust}")

@@ -1,8 +1,3 @@
-"""
-WhatsApp Dispatch Notifications
-Save this file as: whatsapp_integration/notifications.py
-"""
-
 import frappe
 import requests
 from frappe import _

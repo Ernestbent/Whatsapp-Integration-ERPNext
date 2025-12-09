@@ -195,9 +195,9 @@ function update_whatsapp_notifications() {
         callback: r => {
             const messages = r.message || [];
             render_whatsapp_messages(messages);
-            // Update timestamps for Live Chat documents when messages are received
+            // Ensure Live Chat documents exist for all incoming messages
             if (messages.length > 0) {
-                process_incoming_messages(messages);
+                ensure_all_live_chats_exist(messages);
             }
         },
         error: () => {
@@ -211,11 +211,10 @@ function update_whatsapp_notifications() {
     });
 }
 
-// Create WhatsApp Live Chat for new contact
-function create_whatsapp_live_chat(contact_number) {
+// Create WhatsApp Live Chat for new contact with last message
+function create_whatsapp_live_chat(contact_number, contact_name, last_message) {
     return new Promise((resolve, reject) => {
-        // Format contact name as "Unknown-" followed by complete number
-        const contact_name = "Unknown-" + contact_number;
+        const display_name = contact_name || ("Unknown-" + contact_number);
         
         frappe.call({
             method: "frappe.client.insert",
@@ -223,7 +222,9 @@ function create_whatsapp_live_chat(contact_number) {
                 doc: {
                     doctype: "Whatsapp Live Chat",
                     contact: contact_number,
-                    contact_name: contact_name
+                    contact_name: display_name,
+                    last_message: last_message || "",
+                    last_time: frappe.datetime.now_datetime()
                 }
             },
             callback: r => {
@@ -242,8 +243,8 @@ function create_whatsapp_live_chat(contact_number) {
     });
 }
 
-// Check and create Live Chat if needed
-function ensure_live_chat_exists(contact_number) {
+// Check and create/update Live Chat if needed
+function ensure_live_chat_exists(contact_number, contact_name, last_message) {
     return new Promise((resolve, reject) => {
         frappe.call({
             method: "frappe.client.get_list",
@@ -255,17 +256,97 @@ function ensure_live_chat_exists(contact_number) {
             },
             callback: r => {
                 if (r.message && r.message.length > 0) {
-                    // Chat exists
-                    resolve(r.message[0].name);
+                    // Chat exists - update it with latest message
+                    const chat_name = r.message[0].name;
+                    update_live_chat_details(chat_name, contact_name, last_message)
+                        .then(() => resolve(chat_name))
+                        .catch(() => resolve(chat_name)); // Still resolve even if update fails
                 } else {
                     // Create new chat
-                    create_whatsapp_live_chat(contact_number)
+                    create_whatsapp_live_chat(contact_number, contact_name, last_message)
                         .then(chat_name => resolve(chat_name))
                         .catch(err => reject(err));
                 }
             },
             error: err => reject(err)
         });
+    });
+}
+
+// Update Live Chat details (contact name and last message)
+function update_live_chat_details(chat_name, contact_name, last_message) {
+    return new Promise((resolve, reject) => {
+        frappe.call({
+            method: "frappe.client.get",
+            args: {
+                doctype: "Whatsapp Live Chat",
+                name: chat_name
+            },
+            callback: r => {
+                if (r.message) {
+                    const doc = r.message;
+                    
+                    // Update fields
+                    if (contact_name && contact_name !== doc.contact_name) {
+                        doc.contact_name = contact_name;
+                    }
+                    if (last_message) {
+                        doc.last_message = last_message;
+                        doc.last_time = frappe.datetime.now_datetime();
+                    }
+                    
+                    // Save changes
+                    frappe.call({
+                        method: "frappe.client.save",
+                        args: { doc: doc },
+                        callback: () => {
+                            console.log("Updated Live Chat details:", chat_name);
+                            resolve(chat_name);
+                        },
+                        error: err => {
+                            console.error("Error updating Live Chat:", err);
+                            reject(err);
+                        }
+                    });
+                } else {
+                    reject("Chat not found");
+                }
+            },
+            error: err => reject(err)
+        });
+    });
+}
+
+// Ensure all Live Chats exist for incoming messages
+function ensure_all_live_chats_exist(messages) {
+    if (!messages || messages.length === 0) return;
+    
+    // Group messages by contact
+    const contact_map = {};
+    messages.forEach(msg => {
+        const contact = msg.from_number;
+        if (!contact) return;
+        
+        if (!contact_map[contact]) {
+            contact_map[contact] = {
+                contact_name: msg.contact_name || ("Unknown-" + contact),
+                latest_message: msg.message || "",
+                latest_time: msg.creation
+            };
+        } else {
+            // Keep the latest message
+            if (msg.creation > contact_map[contact].latest_time) {
+                contact_map[contact].latest_message = msg.message || "";
+                contact_map[contact].latest_time = msg.creation;
+            }
+        }
+    });
+    
+    // Ensure Live Chat exists for each contact
+    Object.keys(contact_map).forEach(contact => {
+        const data = contact_map[contact];
+        ensure_live_chat_exists(contact, data.contact_name, data.latest_message)
+            .catch(err => console.error("Error ensuring chat exists:", err));
     });
 }
 
@@ -286,7 +367,6 @@ function render_whatsapp_messages(messages) {
         if (!grouped[num]) grouped[num] = {
             messages: [], 
             contact_name: msg.contact_name || ("Unknown-" + num),
-            live_chat_name: msg.live_chat_name, 
             latest_time: msg.creation
         };
         grouped[num].messages.push(msg);
@@ -305,7 +385,7 @@ function render_whatsapp_messages(messages) {
         const time = frappe.datetime.comment_when(d.latest_time);
         
         // Generate onclick handler that ensures chat exists
-        const onclick_handler = `event.preventDefault(); event.stopPropagation(); handle_chat_click('${group.from_number}', '${d.live_chat_name || ''}');`;
+        const onclick_handler = `event.preventDefault(); event.stopPropagation(); handle_chat_click('${group.from_number}', '${frappe.utils.escape_html(d.contact_name)}', '${frappe.utils.escape_html(latest.message || "")}');`;
 
         html += `<a href="#" class="d-block px-4 py-3 text-decoration-none border-bottom position-relative whatsapp-chat-link"
             onclick="${onclick_handler}"
@@ -322,32 +402,28 @@ function render_whatsapp_messages(messages) {
 }
 
 // Handle chat click - ensure Live Chat exists before navigating
-window.handle_chat_click = function(contact_number, existing_chat_name) {
+window.handle_chat_click = function(contact_number, contact_name, last_message) {
     // Close dropdown immediately
     $('.whatsapp-icon-container').removeClass('open');
     $('.whatsapp-dropdown').removeClass('show');
     
-    if (existing_chat_name) {
-        // Chat already exists, navigate directly
-        setTimeout(() => {
-            frappe.set_route('whatsapp-live-chat', existing_chat_name);
-        }, 100);
-    } else {
-        // Check if chat exists or create new one
-        frappe.show_alert({message: __('Opening chat...'), indicator: 'blue'}, 3);
-        
-        ensure_live_chat_exists(contact_number)
-            .then(chat_name => {
-                frappe.set_route('whatsapp-live-chat', chat_name);
-            })
-            .catch(err => {
-                frappe.show_alert({
-                    message: __('Failed to open chat. Please try again.'),
-                    indicator: 'red'
-                }, 5);
-                console.error("Error ensuring live chat exists:", err);
-            });
-    }
+    // Show loading indicator
+    frappe.show_alert({message: __('Opening chat...'), indicator: 'blue'}, 3);
+    
+    // Ensure chat exists or create it, then navigate
+    ensure_live_chat_exists(contact_number, contact_name, last_message)
+        .then(chat_name => {
+            setTimeout(() => {
+                frappe.set_route('Form', 'Whatsapp Live Chat', chat_name);
+            }, 100);
+        })
+        .catch(err => {
+            frappe.show_alert({
+                message: __('Failed to open chat. Please try again.'),
+                indicator: 'red'
+            }, 5);
+            console.error("Error ensuring live chat exists:", err);
+        });
 };
 
 // Autoclose dropdown
@@ -358,7 +434,7 @@ $(document).on('click', '.whatsapp-view-all', function(e) {
     
     // Navigate after closing dropdown
     setTimeout(() => {
-        frappe.set_route('whatsapp-live-chat');
+        frappe.set_route('List', 'Whatsapp Live Chat');
     }, 100);
 });
 
@@ -377,84 +453,9 @@ if (typeof frappe !== 'undefined' && frappe.router) {
     });
 }
 
-// Update WhatsApp Live Chat timestamp and unread count when new message is received
-function update_live_chat_timestamp(contact_number, unread_count) {
-    return new Promise((resolve, reject) => {
-        frappe.call({
-            method: "frappe.client.get",
-            args: {
-                doctype: "Whatsapp Live Chat",
-                filters: { contact: contact_number }
-            },
-            callback: r => {
-                if (r.message) {
-                    const doc = r.message;
-                    
-                    // Update unread count if field exists, then save
-                    if (unread_count !== undefined) {
-                        doc.unread_count = unread_count;
-                    }
-                    
-                    // Trigger save to update modified timestamp and unread count
-                    frappe.call({
-                        method: "frappe.client.save",
-                        args: {
-                            doc: doc
-                        },
-                        callback: () => {
-                            console.log("Updated timestamp and unread count for chat:", doc.name);
-                            resolve(doc.name);
-                        },
-                        error: err => {
-                            console.error("Error updating timestamp:", err);
-                            reject(err);
-                        }
-                    });
-                } else {
-                    resolve(null);
-                }
-            },
-            error: err => reject(err)
-        });
-    });
-}
-
-// Process incoming messages and update timestamps
-function process_incoming_messages(messages) {
-    if (!messages || messages.length === 0) return;
-    
-    // Group messages by contact and count unread messages for each
-    const contact_data = {};
-    messages.forEach(msg => {
-        const contact = msg.from_number;
-        if (!contact) return;
-        
-        if (!contact_data[contact]) {
-            contact_data[contact] = {
-                latest_time: msg.creation,
-                unread_count: 0
-            };
-        }
-        
-        if (msg.creation > contact_data[contact].latest_time) {
-            contact_data[contact].latest_time = msg.creation;
-        }
-        
-        // Count unread messages
-        if (msg.custom_read === 0 || msg.custom_read === "0") {
-            contact_data[contact].unread_count++;
-        }
-    });
-    
-    // Update timestamp and unread count for each contact's Live Chat
-    Object.keys(contact_data).forEach(contact => {
-        update_live_chat_timestamp(contact, contact_data[contact].unread_count);
-    });
-}
-
-// Open Chat Marks Messages
+// Open Chat Marks Messages as Read
 frappe.ui.form.on("Whatsapp Live Chat", "refresh", function(frm) {
-    // Mark unread messages read when opening existing chat
+    // Mark unread messages as read when opening existing chat
     if (!frm.is_new() && frm.doc.contact) {
         frappe.call({
             method: "frappe.client.get_list",
@@ -471,12 +472,7 @@ frappe.ui.form.on("Whatsapp Live Chat", "refresh", function(frm) {
                             args: { doctype: "Whatsapp Message", name: m.name, fieldname: "custom_read", value: 1 }
                         })
                     )).then(() => {
-                        // Reset unread count to 0 after marking messages as read
-                        if (frm.doc.unread_count && frm.doc.unread_count > 0) {
-                            frm.set_value('unread_count', 0);
-                            frm.save();
-                        }
-                        
+                        // Update notification count
                         if (typeof update_whatsapp_notifications === "function") {
                             update_whatsapp_notifications(); 
                         }

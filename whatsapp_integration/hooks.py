@@ -48,8 +48,8 @@ app_include_js = [
 # include js in doctype views
 doctype_js = {
     "Whatsapp Message": "public/js/send_reply.js",
-    "Whatsapp Live Chat": "public/js/whatsapp_live_chat.js",  
-    "Whatsapp Setting" : "public/js/create_chats_customers.js",
+    # "Whatsapp Live Chat": "public/js/whatsapp_live_chat.js",  
+    # "Whatsapp Setting" : "public/js/create_chats_customers.js",
     "Whatsapp Message Template": "public/js/message_template_button.js",   
 }
 
