@@ -198,6 +198,7 @@ doc_events = {
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.payment_entry_notificatio.send_payment_background",
         ]
     },
+   
 }
 
 # Scheduled Tasks
