@@ -192,10 +192,12 @@ doc_events = {
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.upload_delivery_note_document.send_delivery_note_background",
         ]
     },
-    "Payment Entry":{
-        "on_submit": [
-            "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_payment_notification",
-            "whatsapp_integration.erpnext_whatsapp.custom_scripts.payment_entry_notificatio.send_payment_background",
+    "Customer":{
+        "after_insert": [
+            "whatsapp_integration.whatsapp_webhook.webhook.link_whatsapp_messages_to_customer",
+        ],
+        "on_update": [
+            "whatsapp_integration.whatsapp_webhook.webhook.link_whatsapp_messages_to_customer",
         ]
     },
    

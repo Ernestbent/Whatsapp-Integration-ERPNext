@@ -108,7 +108,7 @@ function add_whatsapp_icon() {
                     </div>
                 </div>
                 <div style="padding: 12px 18px; background: #f8f9fa; border-top: 1px solid #eee; text-align: center;">
-                    <a href="/app/whatsapp-live-chat" class="whatsapp-view-all" style="color: #25D366; font-weight: 500; text-decoration: none; font-size: 14px;">
+                    <a href="/app/whatsapp" class="whatsapp-view-all" style="color: #25D366; font-weight: 500; text-decoration: none; font-size: 14px;">
                         View All Chats
                     </a>
                 </div>
@@ -175,13 +175,20 @@ function handle_whatsapp_dropdown_position() {
 $(window).on('resize', frappe.utils.debounce(handle_whatsapp_dropdown_position, 200));
 $(document).ready(handle_whatsapp_dropdown_position);
 
-// Notifications Update
+// Notifications Update - Fetch from Whatsapp Message doctype
 function update_whatsapp_notifications() {
     if (typeof frappe === 'undefined') return;
 
+    // Get count of unread incoming messages
     frappe.call({
         method: "frappe.client.get_count",
-        args: { doctype: "Whatsapp Message", filters: { custom_status: "Incoming", custom_read: 0 } },
+        args: { 
+            doctype: "Whatsapp Message", 
+            filters: { 
+                custom_status: "Incoming", 
+                custom_read: 0 
+            } 
+        },
         callback: r => {
             const count = r.message || 0;
             const $badge = $('.whatsapp-count-badge');
@@ -190,15 +197,22 @@ function update_whatsapp_notifications() {
         }
     });
 
+    // Get unread messages grouped by contact
     frappe.call({
-        method: "whatsapp_integration.erpnext_whatsapp.custom_scripts.api_fetch_message.get_unread_messages",
+        method: "frappe.client.get_list",
+        args: {
+            doctype: "Whatsapp Message",
+            filters: { 
+                custom_status: "Incoming", 
+                custom_read: 0 
+            },
+            fields: ["name", "from_number", "customer", "message", "creation", "timestamp"],
+            order_by: "creation desc",
+            limit_page_length: 100
+        },
         callback: r => {
             const messages = r.message || [];
-            render_whatsapp_messages(messages);
-            // Ensure Live Chat documents exist for all incoming messages
-            if (messages.length > 0) {
-                ensure_all_live_chats_exist(messages);
-            }
+            enrich_and_render_messages(messages);
         },
         error: () => {
             $('.whatsapp-messages-container').html(`
@@ -211,146 +225,84 @@ function update_whatsapp_notifications() {
     });
 }
 
-// Create WhatsApp Live Chat for new contact with last message
-function create_whatsapp_live_chat(contact_number, contact_name, last_message) {
-    return new Promise((resolve, reject) => {
-        const display_name = contact_name || ("Unknown-" + contact_number);
-        
-        frappe.call({
-            method: "frappe.client.insert",
-            args: {
-                doc: {
-                    doctype: "Whatsapp Live Chat",
-                    contact: contact_number,
-                    contact_name: display_name,
-                    last_message: last_message || "",
-                    last_time: frappe.datetime.now_datetime()
-                }
-            },
-            callback: r => {
-                if (r.message) {
-                    console.log("Created new WhatsApp Live Chat:", r.message.name);
-                    resolve(r.message.name);
-                } else {
-                    reject("Failed to create chat");
-                }
-            },
-            error: err => {
-                console.error("Error creating WhatsApp Live Chat:", err);
-                reject(err);
-            }
-        });
-    });
-}
-
-// Check and create/update Live Chat if needed
-function ensure_live_chat_exists(contact_number, contact_name, last_message) {
-    return new Promise((resolve, reject) => {
-        frappe.call({
-            method: "frappe.client.get_list",
-            args: {
-                doctype: "Whatsapp Live Chat",
-                filters: { contact: contact_number },
-                fields: ["name"],
-                limit: 1
-            },
-            callback: r => {
-                if (r.message && r.message.length > 0) {
-                    // Chat exists - update it with latest message
-                    const chat_name = r.message[0].name;
-                    update_live_chat_details(chat_name, contact_name, last_message)
-                        .then(() => resolve(chat_name))
-                        .catch(() => resolve(chat_name)); // Still resolve even if update fails
-                } else {
-                    // Create new chat
-                    create_whatsapp_live_chat(contact_number, contact_name, last_message)
-                        .then(chat_name => resolve(chat_name))
-                        .catch(err => reject(err));
-                }
-            },
-            error: err => reject(err)
-        });
-    });
-}
-
-// Update Live Chat details (contact name and last message)
-function update_live_chat_details(chat_name, contact_name, last_message) {
-    return new Promise((resolve, reject) => {
-        frappe.call({
-            method: "frappe.client.get",
-            args: {
-                doctype: "Whatsapp Live Chat",
-                name: chat_name
-            },
-            callback: r => {
-                if (r.message) {
-                    const doc = r.message;
-                    
-                    // Update fields
-                    if (contact_name && contact_name !== doc.contact_name) {
-                        doc.contact_name = contact_name;
-                    }
-                    if (last_message) {
-                        doc.last_message = last_message;
-                        doc.last_time = frappe.datetime.now_datetime();
-                    }
-                    
-                    // Save changes
-                    frappe.call({
-                        method: "frappe.client.save",
-                        args: { doc: doc },
-                        callback: () => {
-                            console.log("Updated Live Chat details:", chat_name);
-                            resolve(chat_name);
-                        },
-                        error: err => {
-                            console.error("Error updating Live Chat:", err);
-                            reject(err);
-                        }
-                    });
-                } else {
-                    reject("Chat not found");
-                }
-            },
-            error: err => reject(err)
-        });
-    });
-}
-
-// Ensure all Live Chats exist for incoming messages
-function ensure_all_live_chats_exist(messages) {
-    if (!messages || messages.length === 0) return;
+// Format phone number for display
+function format_phone_display(phone_number) {
+    if (!phone_number) return "Unknown";
+    const clean = phone_number.replace(/\D/g, '');
     
-    // Group messages by contact
-    const contact_map = {};
-    messages.forEach(msg => {
-        const contact = msg.from_number;
-        if (!contact) return;
-        
-        if (!contact_map[contact]) {
-            contact_map[contact] = {
-                contact_name: msg.contact_name || ("Unknown-" + contact),
-                latest_message: msg.message || "",
-                latest_time: msg.creation
-            };
-        } else {
-            // Keep the latest message
-            if (msg.creation > contact_map[contact].latest_time) {
-                contact_map[contact].latest_message = msg.message || "";
-                contact_map[contact].latest_time = msg.creation;
-            }
+    // Format based on length
+    if (clean.length === 12 && clean.startsWith('256')) {
+        // Uganda format: 256 XXX XXX XXX
+        return `+${clean.slice(0,3)} ${clean.slice(3,6)} ${clean.slice(6,9)} ${clean.slice(9)}`;
+    } else if (clean.length >= 10) {
+        // Generic format: last 10 digits grouped
+        const last10 = clean.slice(-10);
+        return `+${clean.slice(0,-10)} ${last10.slice(0,3)} ${last10.slice(3,6)} ${last10.slice(6)}`;
+    }
+    return `+${clean}`;
+}
+
+// Enrich messages with customer names and render
+function enrich_and_render_messages(messages) {
+    if (!messages || messages.length === 0) {
+        render_whatsapp_messages([]);
+        return;
+    }
+
+    // Get unique customers
+    const customers = [...new Set(messages.filter(m => m.customer).map(m => m.customer))];
+    
+    if (customers.length === 0) {
+        // No customers, just show phone numbers
+        messages.forEach(msg => {
+            msg.display_name = format_phone_display(msg.from_number);
+            msg.has_customer = false;
+        });
+        render_whatsapp_messages(messages);
+        return;
+    }
+
+    // Fetch customer names
+    frappe.call({
+        method: "frappe.client.get_list",
+        args: {
+            doctype: "Customer",
+            filters: [["name", "in", customers]],
+            fields: ["name", "customer_name"]
+        },
+        callback: r => {
+            const customer_map = {};
+            (r.message || []).forEach(c => {
+                customer_map[c.name] = c.customer_name;
+            });
+            
+            // Add display names to messages
+            messages.forEach(msg => {
+                if (msg.customer && customer_map[msg.customer]) {
+                    // Has linked customer - show customer name
+                    msg.display_name = customer_map[msg.customer];
+                    msg.has_customer = true;
+                } else {
+                    // No customer - show formatted phone number
+                    msg.display_name = format_phone_display(msg.from_number);
+                    msg.has_customer = false;
+                }
+            });
+            
+            render_whatsapp_messages(messages);
+        },
+        error: () => {
+            // If customer fetch fails, use phone numbers
+            messages.forEach(msg => {
+                msg.display_name = format_phone_display(msg.from_number);
+                msg.has_customer = false;
+            });
+            render_whatsapp_messages(messages);
         }
     });
-    
-    // Ensure Live Chat exists for each contact
-    Object.keys(contact_map).forEach(contact => {
-        const data = contact_map[contact];
-        ensure_live_chat_exists(contact, data.contact_name, data.latest_message)
-            .catch(err => console.error("Error ensuring chat exists:", err));
-    });
 }
 
-// Render Messages
+// Render Messages - Group by contact
 function render_whatsapp_messages(messages) {
     const container = $('.whatsapp-messages-container');
     if (!messages || messages.length === 0) {
@@ -361,69 +313,73 @@ function render_whatsapp_messages(messages) {
         return;
     }
 
+    // Group messages by contact
     const grouped = {};
     messages.forEach(msg => {
-        const num = msg.from_number || "Unknown";
-        if (!grouped[num]) grouped[num] = {
-            messages: [], 
-            contact_name: msg.contact_name || ("Unknown-" + num),
-            latest_time: msg.creation
-        };
-        grouped[num].messages.push(msg);
-        if (msg.creation > grouped[num].latest_time) grouped[num].latest_time = msg.creation;
+        const key = msg.customer || msg.from_number || "Unknown";
+        if (!grouped[key]) {
+            grouped[key] = {
+                messages: [],
+                display_name: msg.display_name || msg.customer || msg.from_number || "Unknown",
+                from_number: msg.from_number,
+                customer: msg.customer,
+                latest_time: msg.creation
+            };
+        }
+        grouped[key].messages.push(msg);
+        if (msg.creation > grouped[key].latest_time) {
+            grouped[key].latest_time = msg.creation;
+        }
     });
 
+    // Sort by latest message time
     const sorted = Object.keys(grouped)
-        .map(num => ({ from_number: num, data: grouped[num] }))
+        .map(key => ({ key: key, data: grouped[key] }))
         .sort((a, b) => new Date(b.data.latest_time) - new Date(a.data.latest_time));
 
     let html = '';
     sorted.forEach(group => {
         const d = group.data;
-        const latest = d.messages.sort((a,b)=> new Date(b.creation)-new Date(a.creation))[0];
-        const text = (latest.message||"").substring(0,70) + ((latest.message||"").length>70?"...":"");
+        const latest = d.messages.sort((a, b) => new Date(b.creation) - new Date(a.creation))[0];
+        const text = (latest.message || "").substring(0, 70) + ((latest.message || "").length > 70 ? "..." : "");
         const time = frappe.datetime.comment_when(d.latest_time);
         
-        // Generate onclick handler that ensures chat exists
-        const onclick_handler = `event.preventDefault(); event.stopPropagation(); handle_chat_click('${group.from_number}', '${frappe.utils.escape_html(d.contact_name)}', '${frappe.utils.escape_html(latest.message || "")}');`;
+        // Use customer or from_number for navigation
+        const contact_identifier = d.customer || d.from_number;
+        const contact_type = d.customer ? 'customer' : 'contact';
+        
+        // Add visual indicator for unknown contacts
+        const unknownBadge = latest.is_unknown ? '<i class="fa fa-question-circle" style="color:#ff9800;margin-left:4px;" title="Unknown contact"></i>' : '';
 
         html += `<a href="#" class="d-block px-4 py-3 text-decoration-none border-bottom position-relative whatsapp-chat-link"
-            onclick="${onclick_handler}"
+            onclick="handle_chat_click('${contact_identifier}', '${contact_type}', event)"
             onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
             <div class="d-flex align-items-center justify-content-between mb-1">
-                <strong style="font-size:14px;">${frappe.utils.escape_html(d.contact_name)}</strong>
+                <strong style="font-size:14px;">${frappe.utils.escape_html(d.display_name)}${unknownBadge}</strong>
                 <small class="text-muted">${time}</small>
             </div>
             <div class="text-muted small" style="padding-left:4px;">${frappe.utils.escape_html(text)}</div>
-            ${d.messages.length>1?`<span class="badge badge-success position-absolute" style="top:14px; right:16px;">${d.messages.length}</span>`:""}
+            ${d.messages.length > 1 ? `<span class="badge badge-success position-absolute" style="top:14px; right:16px;">${d.messages.length}</span>` : ""}
         </a>`;
     });
     container.html(html);
 }
 
-// Handle chat click - ensure Live Chat exists before navigating
-window.handle_chat_click = function(contact_number, contact_name, last_message) {
+// Handle chat click - Navigate to WhatsApp page with contact pre-selected
+window.handle_chat_click = function(contact_identifier, contact_type, event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
     // Close dropdown immediately
     $('.whatsapp-icon-container').removeClass('open');
     $('.whatsapp-dropdown').removeClass('show');
     
-    // Show loading indicator
-    frappe.show_alert({message: __('Opening chat...'), indicator: 'blue'}, 3);
+    // Navigate to WhatsApp page with the contact/customer selected
+    // Store the selected contact in sessionStorage for the page to pick up
+    sessionStorage.setItem('whatsapp_selected_contact', contact_identifier);
+    sessionStorage.setItem('whatsapp_selected_type', contact_type);
     
-    // Ensure chat exists or create it, then navigate
-    ensure_live_chat_exists(contact_number, contact_name, last_message)
-        .then(chat_name => {
-            setTimeout(() => {
-                frappe.set_route('Form', 'Whatsapp Live Chat', chat_name);
-            }, 100);
-        })
-        .catch(err => {
-            frappe.show_alert({
-                message: __('Failed to open chat. Please try again.'),
-                indicator: 'red'
-            }, 5);
-            console.error("Error ensuring live chat exists:", err);
-        });
+    frappe.set_route('whatsapp');
 };
 
 // Autoclose dropdown
@@ -434,7 +390,7 @@ $(document).on('click', '.whatsapp-view-all', function(e) {
     
     // Navigate after closing dropdown
     setTimeout(() => {
-        frappe.set_route('List', 'Whatsapp Live Chat');
+        frappe.set_route('whatsapp');
     }, 100);
 });
 
@@ -452,33 +408,3 @@ if (typeof frappe !== 'undefined' && frappe.router) {
         $('.whatsapp-dropdown').removeClass('show');
     });
 }
-
-// Open Chat Marks Messages as Read
-frappe.ui.form.on("Whatsapp Live Chat", "refresh", function(frm) {
-    // Mark unread messages as read when opening existing chat
-    if (!frm.is_new() && frm.doc.contact) {
-        frappe.call({
-            method: "frappe.client.get_list",
-            args: {
-                doctype: "Whatsapp Message",
-                filters: { from_number: frm.doc.contact, custom_status: "Incoming", custom_read: 0 },
-                fields: ["name"]
-            },
-            callback: r => {
-                if (r.message && r.message.length) {
-                    Promise.all(r.message.map(m =>
-                        frappe.call({
-                            method: "frappe.client.set_value",
-                            args: { doctype: "Whatsapp Message", name: m.name, fieldname: "custom_read", value: 1 }
-                        })
-                    )).then(() => {
-                        // Update notification count
-                        if (typeof update_whatsapp_notifications === "function") {
-                            update_whatsapp_notifications(); 
-                        }
-                    });
-                }
-            }
-        });
-    }
-});
