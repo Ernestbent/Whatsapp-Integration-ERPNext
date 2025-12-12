@@ -10,37 +10,55 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             .wa-app-container {
                 height: calc(100vh - 100px); 
                 display: flex; 
-                background:#f0f2f5; 
-                font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+                background: #efeae2;
+                font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
                 border-radius: 12px;
                 overflow: hidden;
                 margin: 8px;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                position: relative;
+            }
+            
+            /* WhatsApp Background Pattern */
+            .wa-bg-pattern {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                opacity: 0.06;
+                background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><path d="M25 25 L75 25 L50 75 Z" fill="%23000000" opacity="0.1"/></svg>');
+                background-repeat: repeat;
+                pointer-events: none;
             }
             
             .wa-sidebar {
-                width:380px; 
-                background:#fff; 
-                border-right:1px solid #ddd; 
-                display:flex; 
-                flex-direction:column;
+                width: 380px; 
+                background: #fff; 
+                border-right: 1px solid #ddd; 
+                display: flex; 
+                flex-direction: column;
                 border-radius: 12px 0 0 12px;
+                position: relative;
+                z-index: 1;
             }
             
+            /* WhatsApp Green Header */
             .wa-sidebar-header {
-                padding:20px; 
-                background:#075e54; 
-                color:white; 
-                font-weight:600; 
-                font-size:18px; 
-                display:flex; 
-                align-items:center; 
-                gap:12px;
+                padding: 20px; 
+                background: #008069; 
+                color: white; 
+                font-weight: 600; 
+                font-size: 18px; 
+                display: flex; 
+                align-items: center; 
+                gap: 12px;
                 border-radius: 12px 0 0 0;
             }
             
             .wa-sidebar-header i {
-                font-size:28px;
+                font-size: 28px;
+                color: white;
             }
             
             .wa-search-container {
@@ -77,26 +95,27 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             }
             
             .wa-chat-list {
-                flex:1; 
-                overflow-y:auto;
+                flex: 1; 
+                overflow-y: auto;
             }
             
             .wa-chat-item {
-                padding:15px 20px; 
-                border-bottom:1px solid #f0f0f0; 
-                cursor:pointer; 
-                display:flex; 
-                justify-content:space-between; 
-                align-items:center; 
+                padding: 15px 20px; 
+                border-bottom: 1px solid #f0f0f0; 
+                cursor: pointer; 
+                display: flex; 
+                justify-content: space-between; 
+                align-items: center; 
                 transition: background 0.2s;
+                position: relative;
             }
             
             .wa-chat-item:hover {
-                background:#f5f5f5;
+                background: #f5f5f5;
             }
             
             .wa-chat-item.active {
-                background:#e8f5e9;
+                background: #e8f5e9;
             }
             
             .wa-chat-content {
@@ -105,300 +124,281 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             }
             
             .wa-chat-name {
-                font-weight:600; 
-                margin-bottom:4px;
+                font-weight: 600; 
+                margin-bottom: 4px;
                 color: #111b21;
                 font-size: 15px;
             }
             
             .wa-chat-preview {
-                font-size:13px; 
-                color:#667781; 
-                white-space:nowrap; 
-                overflow:hidden; 
-                text-overflow:ellipsis; 
-                max-width:200px;
+                font-size: 13px; 
+                color: #667781; 
+                white-space: nowrap; 
+                overflow: hidden; 
+                text-overflow: ellipsis; 
+                max-width: 200px;
             }
             
             .wa-unread-badge {
-                background:#25d366; 
-                color:white; 
-                font-size:11px; 
-                padding:3px 8px; 
-                border-radius:12px; 
-                min-width:20px; 
-                font-weight:600;
+                background: #25d366; 
+                color: white; 
+                font-size: 11px; 
+                padding: 3px 8px; 
+                border-radius: 12px; 
+                min-width: 20px; 
+                font-weight: 600;
                 text-align: center;
             }
             
             .wa-chat-time {
-                font-size:11px; 
-                color:#667781;
+                font-size: 11px; 
+                color: #667781;
                 white-space: nowrap;
             }
             
             .wa-main-chat {
-                flex:1; 
-                display:flex; 
-                flex-direction:column; 
-                background:#e5ddd5 url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyJpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bXA6Q3JlYXRvclRvb2w9IkFkb2JlIFBob3Rvc2hvcCBDUzYgKFdpbmRvd3MpIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOkU5QkYwMzZDNzU2NzExRUE4Njk2RTg0N0YxRkY4QkFCIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOkU5QkYwMzZENzU2NzExRUE4Njk2RTg0N0YxRkY4QkFCIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6RTlCRjAzNkE3NTY3MTFFQTg2OTZFODQ3RjFGRjhCQUIiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6RTlCRjAzNkI3NTY3MTFFQTg2OTZFODQ3RjFGRjhCQUIiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDwvcGFja2V0IGVuZD0iciI/Pg==') repeat;
+                flex: 1; 
+                display: flex; 
+                flex-direction: column; 
+                background: #efeae2;
                 border-radius: 0 12px 12px 0;
-            }
-            
-            .wa-chat-header {
-                padding:15px 25px; 
-                background:#075e54; 
-                color:white; 
-                font-weight:600; 
-                font-size:16px; 
-                display:flex; 
-                align-items:center; 
-                gap:12px; 
-                box-shadow:0 1px 2px rgba(0,0,0,0.1);
-                border-radius: 0 12px 0 0;
-            }
-            
-            .wa-chat-header i {
-                font-size:20px; 
-                color:#25d366;
-            }
-            
-            .wa-messages-area {
-                flex:1; 
-                overflow-y:auto; 
-                padding:20px 80px; 
-                display:flex; 
-                flex-direction:column; 
-                gap:8px;
-            }
-            
-            .wa-date-separator {
-                text-align: center;
-                margin: 20px 0;
                 position: relative;
             }
             
-            .wa-date-separator span {
-                background: rgba(0,0,0,0.1);
-                color: #667781;
-                padding: 5px 15px;
-                border-radius: 15px;
-                font-size: 12px;
-                font-weight: 500;
+            .wa-chat-header {
+                padding: 15px 25px; 
+                background: #008069; 
+                color: white; 
+                font-weight: 600; 
+                font-size: 16px; 
+                display: flex; 
+                align-items: center; 
+                gap: 12px; 
+                box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                border-radius: 0 12px 0 0;
+                position: relative;
+                z-index: 10;
             }
             
+            .wa-chat-header i {
+                font-size: 20px; 
+                color: #25d366;
+            }
+            
+            .wa-messages-area {
+                flex: 1; 
+                overflow-y: auto; 
+                padding: 20px 8%; 
+                display: flex; 
+                flex-direction: column; 
+                gap: 2px;
+                position: relative;
+                z-index: 1;
+            }
+            
+            /* Modern Message Bubbles */
             .wa-message {
-                max-width:70%; 
-                padding:8px 12px 6px 12px; 
-                border-radius:8px; 
-                box-shadow:0 1px 2px rgba(0,0,0,0.15); 
-                word-wrap:break-word; 
-                position:relative;
-                border-radius: 8px 18px 18px 8px;
+                max-width: 65%;
+                padding: 6px 7px 8px 9px;
+                border-radius: 7.5px;
+                box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
+                word-wrap: break-word;
+                position: relative;
+                margin-bottom: 2px;
+                animation: messageSlideIn 0.2s ease-out;
+            }
+            
+            @keyframes messageSlideIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
             }
             
             .wa-message.incoming {
-                background:#fff; 
-                align-self:flex-start; 
-                border-top-left-radius:4px;
-                border-radius: 4px 18px 18px 4px;
+                background: #fff; 
+                align-self: flex-start; 
+                border-radius: 0px 7.5px 7.5px 7.5px;
             }
             
             .wa-message.outgoing {
-                background:#d9fdd3; 
-                align-self:flex-end; 
-                border-top-right-radius:4px;
-                border-radius: 18px 4px 4px 18px;
+                background: #d9fdd3; 
+                align-self: flex-end; 
+                border-radius: 7.5px 0px 7.5px 7.5px;
             }
             
             .wa-message-text {
-                margin-bottom:2px; 
-                line-height:1.5; 
-                white-space:pre-wrap;
+                margin-bottom: 2px; 
+                line-height: 1.5; 
+                white-space: pre-wrap;
                 font-size: 14px;
+                color: #111b21;
             }
             
             .wa-message-time {
-                font-size:11px; 
-                color:#667781; 
-                text-align:right; 
-                display:flex; 
-                align-items:center; 
-                justify-content:flex-end; 
-                gap:4px; 
-                margin-top:4px;
+                font-size: 11px; 
+                color: #667781; 
+                text-align: right; 
+                display: flex; 
+                align-items: center; 
+                gap: 4px; 
+                margin-top: 4px;
+                justify-content: flex-end;
+                min-height: 15px;
             }
             
-            .wa-message.outgoing .wa-message-time {
-                color:#53bdeb;
-            }
-            
+            /* WhatsApp Ticks (Modern Design) */
             .wa-tick {
-                font-size:14px; 
-                line-height:1;
+                display: inline-flex;
+                align-items: center;
+                margin-left: 3px;
             }
             
             .wa-tick-sent {
-                color:#8696a0;
+                color: #8696a0;
             }
             
             .wa-tick-delivered {
-                color:#53bdeb;
+                color: #53bdeb;
             }
             
             .wa-tick-read {
-                color:#53bdeb;
+                color: #53bdeb;
             }
             
             .wa-input-area {
-                padding:15px 25px; 
-                background:#f0f0f0; 
-                display:flex; 
-                align-items:center; 
-                gap:15px;
+                padding: 10px 16px; 
+                background: #f0f2f5; 
+                display: flex; 
+                flex-direction: column;
+                gap: 8px;
+                box-shadow: 0 -1px 2px rgba(0,0,0,0.05);
+                position: relative;
+                z-index: 10;
                 border-radius: 0 0 12px 0;
             }
             
             .wa-input-wrapper {
-                flex:1; 
-                display:flex; 
-                align-items:center; 
-                background:white; 
-                border-radius:24px; 
-                padding:8px 20px; 
-                gap:12px;
-                border: 1px solid #ddd;
-            }
-            
-            #wa-message-input {
-                flex:1; 
-                border:none; 
-                outline:none; 
-                font-size:15px; 
-                background:transparent;
-                min-height: 20px;
-            }
-            
-            .wa-emoji-btn {
-                cursor:pointer; 
-                font-size:24px; 
-                color:#8696a0; 
-                transition:color 0.2s;
-            }
-            
-            .wa-emoji-btn:hover {
-                color:#075e54;
-            }
-            
-            #wa-send-btn {
-                background:#25d366; 
-                color:white; 
-                border:none; 
-                border-radius:50%; 
-                width:50px; 
-                height:50px; 
-                cursor:pointer; 
-                transition:background 0.2s; 
-                display:flex; 
-                align-items:center; 
-                justify-content:center;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            }
-            
-            #wa-send-btn:hover {
-                background:#128c7e;
-            }
-            
-            #wa-send-btn:disabled {
-                opacity:0.5; 
-                cursor:not-allowed;
-            }
-            
-            .wa-no-chat {
-                display:flex; 
-                flex-direction:column; 
-                align-items:center; 
-                justify-content:center; 
-                height:100%; 
-                color:#888;
-            }
-            
-            .sending-msg {
-                opacity:0.7;
-            }
-            
-            .wa-lightbox {
-                display:none; 
-                position:fixed; 
-                top:0; 
-                left:0; 
-                right:0; 
-                bottom:0; 
-                background:rgba(0,0,0,0.95); 
-                z-index:9999; 
-                justify-content:center; 
-                align-items:center; 
-                cursor:pointer;
-            }
-            
-            .wa-lightbox img, .wa-lightbox video {
-                max-width:90%; 
-                max-height:90%; 
-                border-radius:12px;
-            }
-            
-            .wa-emoji-picker {
-                display:none; 
-                position:absolute; 
-                bottom:85px; 
-                right:25px; 
-                background:white; 
-                border-radius:12px; 
-                box-shadow:0 4px 20px rgba(0,0,0,0.2); 
-                padding:15px; 
-                max-width:350px; 
-                z-index:100;
-                border: 1px solid #ddd;
-            }
-            
-            .wa-emoji-picker.show {
-                display:block;
-            }
-            
-            .wa-emoji-grid {
-                display:grid; 
-                grid-template-columns:repeat(8,1fr); 
-                gap:8px; 
-                max-height:250px; 
-                overflow-y:auto;
-            }
-            
-            .wa-emoji {
-                font-size:24px; 
-                cursor:pointer; 
-                padding:4px; 
-                border-radius:6px; 
-                transition:background 0.2s;
-                text-align: center;
-            }
-            
-            .wa-emoji:hover {
-                background:#f5f5f5;
+                display: flex; 
+                gap: 8px; 
+                align-items: flex-end;
             }
             
             .wa-attachment-btn {
                 cursor: pointer;
                 font-size: 20px;
-                color: #667781;
+                color: #54656f;
                 transition: color 0.2s;
+                background: none;
+                border: none;
+                padding: 6px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
             
             .wa-attachment-btn:hover {
-                color: #075e54;
+                background: rgba(0,0,0,0.05);
             }
             
+            .wa-input-box {
+                flex: 1;
+                background: white;
+                border-radius: 8px;
+                padding: 10px 16px;
+                max-height: 120px;
+                overflow-y: auto;
+                border: 1px solid #ddd;
+            }
+            
+            #wa-message-input {
+                width: 100%;
+                border: none;
+                outline: none;
+                resize: none;
+                font-size: 15px;
+                font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
+                color: #111b21;
+                line-height: 20px;
+                max-height: 100px;
+                background: transparent;
+            }
+            
+            #wa-message-input::placeholder {
+                color: #667781;
+            }
+            
+            .wa-emoji-btn {
+                cursor: pointer; 
+                font-size: 24px; 
+                color: #54656f; 
+                transition: color 0.2s;
+                background: none;
+                border: none;
+                padding: 6px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .wa-emoji-btn:hover {
+                background: rgba(0,0,0,0.05);
+            }
+            
+            #wa-send-btn {
+                background: #008069; 
+                color: white; 
+                border: none; 
+                border-radius: 50%; 
+                width: 48px; 
+                height: 48px; 
+                cursor: pointer; 
+                transition: background 0.2s; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                flex-shrink: 0;
+                font-size: 24px;
+            }
+            
+            #wa-send-btn:hover {
+                background: #06cf9c;
+            }
+            
+            #wa-send-btn:disabled {
+                opacity: 0.5; 
+                cursor: not-allowed;
+            }
+            
+            #wa-send-btn:active {
+                transform: scale(0.95);
+            }
+            
+            .wa-no-chat {
+                display: flex; 
+                flex-direction: column; 
+                align-items: center; 
+                justify-content: center; 
+                height: 100%; 
+                color: #888;
+            }
+            
+            .sending-msg {
+                opacity: 0.7;
+            }
+            
+            /* Media Previews */
             .wa-attachment-preview {
-                margin-top: 10px;
+                margin-top: 6px;
+                border-radius: 8px;
+                overflow: hidden;
             }
             
             .wa-attachment-preview img {
@@ -406,7 +406,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 max-height: 300px;
                 border-radius: 8px;
                 cursor: pointer;
-                border: 1px solid #ddd;
+                display: block;
             }
             
             .wa-attachment-preview video {
@@ -414,37 +414,191 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 max-height: 300px;
                 border-radius: 8px;
                 background: #000;
+                display: block;
             }
             
             .wa-document-preview {
-                background: #f5f5f5;
-                border-radius: 8px;
-                padding: 12px;
                 display: flex;
                 align-items: center;
                 gap: 12px;
-                border: 1px solid #ddd;
+                padding: 12px;
+                background: rgba(0,0,0,0.04);
+                border-radius: 8px;
+                cursor: pointer;
+                transition: background 0.2s;
             }
             
-            .wa-document-preview i {
-                font-size: 32px;
-                color: #d32f2f;
+            .wa-document-preview:hover {
+                background: rgba(0,0,0,0.08);
+            }
+            
+            .wa-document-icon {
+                min-width: 48px;
+                height: 48px;
+                background: #008069;
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 8px;
+                font-size: 10px;
+                font-weight: 600;
             }
             
             .wa-document-info {
                 flex: 1;
+                min-width: 0;
             }
             
             .wa-document-name {
                 font-weight: 500;
-                color: #333;
-                margin-bottom: 4px;
-                word-break: break-all;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-size: 14px;
+                color: #111b21;
             }
             
             .wa-document-size {
                 font-size: 12px;
                 color: #667781;
+                margin-top: 2px;
+            }
+            
+            /* Emoji Picker */
+            .wa-emoji-picker {
+                display: flex;
+                flex-wrap: wrap;
+                max-height: 200px;
+                overflow-y: auto;
+                padding: 6px;
+                background: #fff;
+                border-radius: 8px;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+                gap: 4px;
+                display: none;
+                position: absolute;
+                bottom: 85px;
+                right: 25px;
+                z-index: 100;
+                width: 350px;
+            }
+            
+            .wa-emoji-picker.show {
+                display: flex;
+            }
+            
+            .wa-emoji-btn-picker {
+                background: none;
+                border: none;
+                font-size: 22px;
+                cursor: pointer;
+                padding: 4px;
+                border-radius: 4px;
+                transition: background 0.2s;
+            }
+            
+            .wa-emoji-btn-picker:hover {
+                background: #f0f2f5;
+            }
+            
+            /* Scrollbar Styling */
+            .wa-messages-area::-webkit-scrollbar,
+            .wa-chat-list::-webkit-scrollbar,
+            .wa-emoji-picker::-webkit-scrollbar {
+                width: 6px;
+            }
+            
+            .wa-messages-area::-webkit-scrollbar-track,
+            .wa-chat-list::-webkit-scrollbar-track,
+            .wa-emoji-picker::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            
+            .wa-messages-area::-webkit-scrollbar-thumb,
+            .wa-chat-list::-webkit-scrollbar-thumb,
+            .wa-emoji-picker::-webkit-scrollbar-thumb {
+                background: rgba(0,0,0,0.2);
+                border-radius: 3px;
+            }
+            
+            .wa-messages-area::-webkit-scrollbar-thumb:hover,
+            .wa-chat-list::-webkit-scrollbar-thumb:hover,
+            .wa-emoji-picker::-webkit-scrollbar-thumb:hover {
+                background: rgba(0,0,0,0.3);
+            }
+            
+            /* Typing Indicator */
+            .wa-typing-indicator {
+                display: none;
+                padding: 0 8%;
+                margin-bottom: 8px;
+            }
+            
+            .wa-typing-bubble {
+                max-width: 70%;
+                padding: 10px 14px;
+                border-radius: 7.5px;
+                background: #ffffff;
+                align-self: flex-start;
+                box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
+                display: inline-flex;
+                gap: 4px;
+                align-items: center;
+            }
+            
+            .typing-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #90949c;
+                animation: typing 1.4s infinite;
+            }
+            
+            .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+            .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+            
+            @keyframes typing {
+                0%, 60%, 100% { transform: translateY(0); opacity: 0.7; }
+                30% { transform: translateY(-10px); opacity: 1; }
+            }
+            
+            /* Lightbox */
+            .wa-lightbox {
+                display: none; 
+                position: fixed; 
+                top: 0; 
+                left: 0; 
+                right: 0; 
+                bottom: 0; 
+                background: rgba(0,0,0,0.95); 
+                z-index: 9999; 
+                justify-content: center; 
+                align-items: center; 
+                cursor: pointer;
+            }
+            
+            .wa-lightbox img, 
+            .wa-lightbox video {
+                max-width: 90%; 
+                max-height: 90%; 
+                border-radius: 12px;
+            }
+            
+            .wa-lightbox-close {
+                position: absolute; 
+                top: 20px; 
+                right: 20px; 
+                color: white; 
+                font-size: 30px; 
+                cursor: pointer; 
+                background: rgba(0,0,0,0.5); 
+                width: 40px; 
+                height: 40px; 
+                border-radius: 50%; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center;
             }
             
             #wa-file-input {
@@ -463,6 +617,8 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         </style>
 
         <div class="wa-app-container">
+            <div class="wa-bg-pattern"></div>
+            
             <!-- Sidebar -->
             <div class="wa-sidebar">
                 <div class="wa-sidebar-header">
@@ -483,10 +639,25 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             <!-- Main Chat Area -->
             <div class="wa-main-chat">
                 <div class="wa-chat-header">
-                    <i class="fa fa-user-circle"></i>
+                    <div style="
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 50%;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 18px;
+                        font-weight: 600;
+                        color: white;
+                        flex-shrink: 0;
+                    " id="wa-profile-avatar">
+                        ?
+                    </div>
                     <div id="wa-header-name">Select a conversation</div>
                 </div>
                 
+                <!-- Messages Area -->
                 <div id="wa-messages-area" class="wa-messages-area">
                     <div class="wa-no-chat">
                         <i class="fa fa-comments fa-3x mb-3" style="color:#ccc;"></i>
@@ -494,64 +665,184 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                     </div>
                 </div>
                 
+                <!-- Typing Indicator -->
+                <div id="wa-typing-indicator" class="wa-typing-indicator">
+                    <div class="wa-typing-bubble">
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                        <span class="typing-dot"></span>
+                    </div>
+                </div>
+                
+                <!-- Input Area -->
                 <div class="wa-input-area">
                     <input type="file" id="wa-file-input" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
                     
                     <div class="wa-input-wrapper">
-                        <span class="wa-attachment-btn" id="wa-attachment-btn" title="Attach file">
+                        <button class="wa-attachment-btn" id="wa-attachment-btn" title="Attach file">
                             <i class="fa fa-paperclip"></i>
-                        </span>
-                        <input id="wa-message-input" type="text" placeholder="Type a message" autocomplete="off">
-                        <span class="wa-emoji-btn" id="wa-emoji-btn" title="Emoji">
+                        </button>
+                        
+                        <div class="wa-input-box">
+                            <textarea id="wa-message-input" placeholder="Type a message" rows="1"></textarea>
+                        </div>
+                        
+                        <button class="wa-emoji-btn" id="wa-emoji-btn" title="Emoji">
                             <i class="fa fa-smile-o"></i>
-                        </span>
+                        </button>
+                        
+                        <button id="wa-send-btn">
+                            <i class="fa fa-paper-plane"></i>
+                        </button>
                     </div>
                     
-                    <button id="wa-send-btn">
-                        <i class="fa fa-paper-plane"></i>
-                    </button>
+                    <!-- Emoji Picker -->
+                    <div class="wa-emoji-picker" id="wa-emoji-picker"></div>
                 </div>
             </div>
-        </div>
-
-        <!-- Emoji Picker -->
-        <div class="wa-emoji-picker" id="wa-emoji-picker">
-            <div class="wa-emoji-grid" id="wa-emoji-grid"></div>
         </div>
         
         <!-- Lightbox -->
         <div class="wa-lightbox" id="wa-lightbox">
             <img id="wa-lightbox-img" src="" alt="">
-            <div style="position: absolute; top: 20px; right: 20px; color: white; font-size: 30px; cursor: pointer; background: rgba(0,0,0,0.5); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;" onclick="$('#wa-lightbox').fadeOut()">×</div>
+            <div class="wa-lightbox-close" onclick="$('#wa-lightbox').fadeOut()">×</div>
         </div>
     `);
 
     let active_contact = null;
     let active_customer = null;
     let selected_file = null;
-    let temp_file_url = null; // Store the local file URL for preview
+    let temp_file_url = null;
+    let customer_name_cache = {};
+    let realtime_subscribed = false;
+    let user_at_bottom = true;
 
-    // Common emojis
-    const common_emojis = ['😊','😂','❤️','😍','😢','😭','😡','👍','👏','🙏','🔥','✨','🎉','💪','🤔','😎','🥰','😘','😜','😇','🤗','🥺','😴','😋','🤩','💯','✅','❌','🎁','🌟','💖'];
+    // Common emojis from your second example
+    const common_emojis = [
+        '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙',
+        '😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥',
+        '😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','😶‍🌫️','🥴','😵','🤯','🤠','🥳',
+        '😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱',
+        '😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡',
+        '👋','🤚','🖐️','✋','🖖','👌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎',
+        '✊','👊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','❤️','🧡','💛','💚','💙',
+        '💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','🔥','✨','⭐','🌟','💫','💥','🎉','🎊'
+    ];
+
+    function get_whatsapp_ticks(status, is_read) {
+        // Convert to lowercase and trim for matching
+        const statusLower = (status || '').toString().toLowerCase().trim();
+        
+        if (status === "Incoming") return '';
+        
+        if (is_read) {
+            return `<span class="wa-tick wa-tick-read">
+                <svg viewBox="0 0 16 11" width="16" height="11">
+                    <path fill="#53bdeb" d="M11.071.653a.496.496 0 0 0-.7.076L6.207 6.525 5.183 5.41a.495.495 0 0 0-.7.009l-.626.644a.498.498 0 0 0 .009.7l2.023 1.962a.498.498 0 0 0 .7-.009l5.26-6.87a.498.498 0 0 0-.076-.7l-.702-.493zm4 0a.496.496 0 0 0-.7.076l-4.164 5.796-1.024-1.115a.495.495 0 0 0-.7.009l-.626.644a.498.498 0 0 0 .009.7l2.023 1.962a.498.498 0 0 0 .7-.009l5.26-6.87a.498.498 0 0 0-.076-.7l-.702-.493z"/>
+                </svg>
+            </span>`;
+        } else {
+            return `<span class="wa-tick wa-tick-delivered">
+                <svg viewBox="0 0 16 11" width="16" height="11">
+                    <path fill="#8696a0" d="M11.071.653a.496.496 0 0 0-.7.076L6.207 6.525 5.183 5.41a.495.495 0 0 0-.7.009l-.626.644a.498.498 0 0 0 .009.7l2.023 1.962a.498.498 0 0 0 .7-.009l5.26-6.87a.498.498 0 0 0-.076-.7l-.702-.493zm4 0a.496.496 0 0 0-.7.076l-4.164 5.796-1.024-1.115a.495.495 0 0 0-.7.009l-.626.644a.498.498 0 0 0 .009.7l2.023 1.962a.498.498 0 0 0 .7-.009l5.26-6.87a.498.498 0 0 0-.076-.7l-.702-.493z"/>
+                </svg>
+            </span>`;
+        }
+    }
+
+    function format_timestamp(timestamp) {
+        if (!timestamp) return "";
+        const parts = timestamp.split(":");
+        if (parts.length < 2) return timestamp;
+        let hours = parseInt(parts[0]);
+        const minutes = parts[1];
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12 || 12;
+        return `${hours}:${minutes} ${ampm}`;
+    }
+
+    function render_media_content(message) {
+        const type = message.message_type;
+        const file_url = message.custom_document;
+        const message_text = message.message;
+
+        if (!file_url) {
+            return `<div style="white-space:pre-wrap;word-wrap:break-word;">${frappe.utils.escape_html(message_text||'')}</div>`;
+        }
+
+        switch(type) {
+            case 'image':
+                return `<div class="wa-attachment-preview">
+                    <img src="${file_url}" style="max-width:100%;max-height:350px;" onclick="open_lightbox('${file_url}', 'image')" />
+                    ${message_text && !message_text.startsWith('Image:') ? `<div style="margin-top:6px;">${frappe.utils.escape_html(message_text)}</div>` : ''}
+                </div>`;
+            
+            case 'document':
+                const filename = message_text ? message_text.replace('Document: ', '').split(' – ')[0] : 'Document';
+                const file_ext = filename.split('.').pop().toUpperCase();
+                return `<a href="${file_url}" target="_blank" style="text-decoration:none;color:inherit;">
+                    <div class="wa-document-preview">
+                        <div class="wa-document-icon">
+                            ${file_ext}
+                        </div>
+                        <div class="wa-document-info">
+                            <div class="wa-document-name">
+                                ${frappe.utils.escape_html(filename)}
+                            </div>
+                            <div class="wa-document-size">
+                                📥 Click to download
+                            </div>
+                        </div>
+                    </div>
+                </a>`;
+
+            case 'video':
+                return `<div class="wa-attachment-preview">
+                    <video controls style="max-width:100%;max-height:350px;">
+                        <source src="${file_url}" type="video/mp4">
+                        <source src="${file_url}" type="video/webm">
+                    </video>
+                    ${message_text && !message_text.startsWith('Video:') ? `<div style="margin-top:6px;">${frappe.utils.escape_html(message_text)}</div>` : ''}
+                </div>`;
+
+            case 'audio':
+                return `<div class="wa-attachment-preview">
+                    <audio controls style="width:100%;height:42px;">
+                        <source src="${file_url}" type="audio/mpeg">
+                    </audio>
+                </div>`;
+
+            default:
+                return `<div style="white-space:pre-wrap;">${frappe.utils.escape_html(message_text||'Unsupported message type')}</div>`;
+        }
+    }
+
+    function check_scroll_position() {
+        const container = $("#wa-messages-area")[0];
+        if (!container) return;
+        const threshold = 100;
+        user_at_bottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+    }
 
     function init_emoji_picker() {
-        let html = '';
+        const emojiPicker = $('#wa-emoji-picker');
         common_emojis.forEach(emoji => {
-            html += `<div class="wa-emoji" data-emoji="${emoji}">${emoji}</div>`;
+            emojiPicker.append(`<button class="wa-emoji-btn-picker">${emoji}</button>`);
         });
-        $('#wa-emoji-grid').html(html);
 
         $('#wa-emoji-btn').on('click', function(e) {
             e.stopPropagation();
-            $('#wa-emoji-picker').toggleClass('show');
+            emojiPicker.toggleClass('show');
         });
 
-        $(document).on('click', '.wa-emoji', function() {
-            const emoji = $(this).data('emoji');
+        $(document).on('click', '.wa-emoji-btn-picker', function() {
+            const emoji = $(this).text();
             const input = $('#wa-message-input');
-            input.val(input.val() + emoji);
-            input.focus();
-            $('#wa-emoji-picker').removeClass('show');
+            const currentVal = input.val();
+            const cursorPos = input[0].selectionStart;
+            const newVal = currentVal.substring(0, cursorPos) + emoji + currentVal.substring(cursorPos);
+            input.val(newVal).focus();
+            input[0].setSelectionRange(cursorPos + emoji.length, cursorPos + emoji.length);
         });
 
         $(document).on('click', function(e) {
@@ -594,7 +885,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         if (fileType.startsWith('image/')) {
             previewHtml = `
                 <div class="wa-attachment-preview">
-                    <img src="${fileUrl}" alt="${file.name}" style="max-width: 200px;" onclick="${!isTemp ? `open_lightbox('${fileUrl}', 'image')` : ''}">
+                    <img src="${fileUrl}" alt="${file.name}" style="max-width: 200px;">
                 </div>
             `;
         } else if (fileType.startsWith('video/')) {
@@ -607,27 +898,28 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             `;
         } else if (fileType === 'application/pdf') {
             previewHtml = `
-                <div class="wa-attachment-preview">
+                <a href="${fileUrl}" target="_blank" style="text-decoration:none;color:inherit;">
                     <div class="wa-document-preview">
-                        <i class="fa fa-file-pdf-o"></i>
+                        <div class="wa-document-icon">PDF</div>
                         <div class="wa-document-info">
                             <div class="wa-document-name">${file.name}</div>
                             <div class="wa-document-size">${formatFileSize(file.size)} • PDF</div>
                         </div>
                     </div>
-                </div>
+                </a>
             `;
         } else {
+            const file_ext = file.name.split('.').pop().toUpperCase();
             previewHtml = `
-                <div class="wa-attachment-preview">
+                <a href="${fileUrl}" target="_blank" style="text-decoration:none;color:inherit;">
                     <div class="wa-document-preview">
-                        <i class="fa fa-file"></i>
+                        <div class="wa-document-icon">${file_ext}</div>
                         <div class="wa-document-info">
                             <div class="wa-document-name">${file.name}</div>
                             <div class="wa-document-size">${formatFileSize(file.size)}</div>
                         </div>
                     </div>
-                </div>
+                </a>
             `;
         }
         
@@ -636,8 +928,12 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 <div class="wa-message-text">${isTemp ? 'Sending ' : ''}${file.name}</div>
                 ${previewHtml}
                 <div class="wa-message-time">
-                    ${time}
-                    <span class="wa-tick wa-tick-sent">✓</span>
+                    ${format_timestamp(time)}
+                    <span class="wa-tick wa-tick-sent">
+                        <svg viewBox="0 0 16 11" width="16" height="11">
+                            <path fill="#8696a0" d="M11.071.653a.496.496 0 0 0-.7.076L6.207 6.525 5.183 5.41a.495.495 0 0 0-.7.009l-.626.644a.498.498 0 0 0 .009.7l2.023 1.962a.498.498 0 0 0 .7-.009l5.26-6.87a.498.498 0 0 0-.076-.7l-.702-.493zm4 0a.496.496 0 0 0-.7.076l-4.164 5.796-1.024-1.115a.495.495 0 0 0-.7.009l-.626.644a.498.498 0 0 0 .009.7l2.023 1.962a.498.498 0 0 0 .7-.009l5.26-6.87a.498.498 0 0 0-.076-.7l-.702-.493z"/>
+                        </svg>
+                    </span>
                 </div>
             </div>
         `;
@@ -717,28 +1013,35 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         });
     }
 
-    function get_tick_icon(status, is_read) {
-        if (status === "Incoming") return '';
-        
-        if (is_read) {
-            return '<span class="wa-tick wa-tick-read">✓✓</span>';
-        } else {
-            return '<span class="wa-tick wa-tick-delivered">✓✓</span>';
-        }
-    }
-
     function append_local_message(text) {
         const time = new Date().toTimeString().slice(0,5);
         const html = `
             <div class="wa-message outgoing sending-msg">
                 <div class="wa-message-text">${frappe.utils.escape_html(text).replace(/\n/g,"<br>")}</div>
                 <div class="wa-message-time">
-                    ${time}
-                    <span class="wa-tick wa-tick-sent">✓</span>
+                    ${format_timestamp(time)}
+                    <span class="wa-tick wa-tick-sent">
+                        <svg viewBox="0 0 16 11" width="16" height="11">
+                            <path fill="#8696a0" d="M11.071.653a.496.496 0 0 0-.7.076L6.207 6.525 5.183 5.41a.495.495 0 0 0-.7.009l-.626.644a.498.498 0 0 0 .009.7l2.023 1.962a.498.498 0 0 0 .7-.009l5.26-6.87a.498.498 0 0 0-.076-.7l-.702-.493zm4 0a.496.496 0 0 0-.7.076l-4.164 5.796-1.024-1.115a.495.495 0 0 0-.7.009l-.626.644a.498.498 0 0 0 .009.7l2.023 1.962a.498.498 0 0 0 .7-.009l5.26-6.87a.498.498 0 0 0-.076-.7l-.702-.493z"/>
+                        </svg>
+                    </span>
                 </div>
             </div>`;
         $("#wa-messages-area").append(html);
         scrollToBottom();
+    }
+
+    function format_phone_display(phone_number) {
+        if (!phone_number) return "Unknown";
+        const clean = phone_number.replace(/\D/g, '');
+        
+        if (clean.length === 12 && clean.startsWith('256')) {
+            return `+${clean.slice(0,3)} ${clean.slice(3,6)} ${clean.slice(6,9)} ${clean.slice(9)}`;
+        } else if (clean.length >= 10) {
+            const last10 = clean.slice(-10);
+            return `+${clean.slice(0,-10)} ${last10.slice(0,3)} ${last10.slice(3,6)} ${last10.slice(6)}`;
+        }
+        return `+${clean}`;
     }
 
     function load_conversations() {
@@ -766,7 +1069,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 let html = "";
                 Object.keys(convMap).forEach(key => {
                     const msg = convMap[key];
-                    const name = msg.customer || msg.from_number;
+                    const name = msg.customer || format_phone_display(msg.from_number);
                     const preview = (msg.message||"").substring(0,45)+(msg.message.length>45?"...":"");
                     const unread = unreadMap[key] || 0;
                     const time = frappe.datetime.comment_when(msg.creation);
@@ -791,7 +1094,13 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                     $(this).addClass("active");
                     active_contact = $(this).data("contact");
                     active_customer = $(this).data("customer");
-                    $("#wa-header-name").text(active_customer || active_contact);
+                    const displayName = active_customer || format_phone_display(active_contact);
+                    $("#wa-header-name").text(displayName);
+                    
+                    // Update profile avatar
+                    const avatar = $("#wa-profile-avatar");
+                    avatar.text(displayName.charAt(0).toUpperCase());
+                    
                     load_messages(active_customer, active_contact);
                 });
                 
@@ -815,7 +1124,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             method: "frappe.client.get_list",
             args: {
                 doctype: "Whatsapp Message",
-                fields: ["name","message","from_number","creation","custom_status","custom_document","custom_read","message_id"],
+                fields: ["name","message","from_number","creation","custom_status","custom_document","custom_read","message_id","message_type","timestamp"],
                 filters: customer ? [["customer","=",customer]] : [["from_number","=",contact]],
                 order_by: "creation asc",
                 limit_page_length: 1000
@@ -824,16 +1133,8 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 let html = "";
                 const unread_ids = [];
                 const unread_message_ids = [];
-                let lastDate = null;
 
                 (r.message || []).forEach(msg => {
-                    // Check if date changed for separator
-                    const msgDate = frappe.datetime.str_to_user(msg.creation).split(' ')[0];
-                    if (msgDate !== lastDate) {
-                        html += `<div class="wa-date-separator"><span>${msgDate}</span></div>`;
-                        lastDate = msgDate;
-                    }
-
                     if (msg.custom_status === "Incoming" && !msg.custom_read) {
                         unread_ids.push(msg.name);
                         if (msg.message_id) {
@@ -842,66 +1143,13 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                     }
 
                     const isOutgoing = msg.custom_status !== "Incoming";
-                    const time = frappe.datetime.str_to_user(msg.creation).split(' ')[1].slice(0,5);
-                    const tick_icon = get_tick_icon(msg.custom_status, msg.custom_read);
-
-                    let attachment = "";
-                    if (msg.custom_document) {
-                        const url = msg.custom_document;
-                        const ext = url.split('.').pop().toLowerCase();
-                        const filename = url.split('/').pop();
-
-                        if (["jpg","jpeg","png","gif","webp"].includes(ext)) {
-                            attachment = `
-                                <div class="wa-attachment-preview">
-                                    <img src="${url}" onclick="open_lightbox('${url}', 'image')" alt="Attachment">
-                                </div>`;
-                        }
-                        else if (ext === "pdf") {
-                            attachment = `
-                                <div class="wa-attachment-preview">
-                                    <div class="wa-document-preview">
-                                        <i class="fa fa-file-pdf-o"></i>
-                                        <div class="wa-document-info">
-                                            <div class="wa-document-name">${filename}</div>
-                                            <div class="wa-document-size">PDF Document</div>
-                                        </div>
-                                        <a href="${url}" target="_blank" style="color:#d32f2f;">
-                                            <i class="fa fa-download"></i>
-                                        </a>
-                                    </div>
-                                </div>`;
-                        }
-                        else if (["mp4","webm","ogg","mov","avi"].includes(ext)) {
-                            attachment = `
-                                <div class="wa-attachment-preview">
-                                    <video controls>
-                                        <source src="${url}">
-                                        Your browser does not support video.
-                                    </video>
-                                </div>`;
-                        }
-                        else {
-                            attachment = `
-                                <div class="wa-attachment-preview">
-                                    <div class="wa-document-preview">
-                                        <i class="fa fa-file"></i>
-                                        <div class="wa-document-info">
-                                            <div class="wa-document-name">${filename}</div>
-                                            <div class="wa-document-size">${ext.toUpperCase()} File</div>
-                                        </div>
-                                        <a href="${url}" target="_blank" style="color:#333;">
-                                            <i class="fa fa-download"></i>
-                                        </a>
-                                    </div>
-                                </div>`;
-                        }
-                    }
+                    const time = msg.timestamp ? format_timestamp(msg.timestamp) : frappe.datetime.str_to_user(msg.creation).split(' ')[1].slice(0,5);
+                    const tick_icon = get_whatsapp_ticks(msg.custom_status, msg.custom_read);
+                    const media_content = render_media_content(msg);
 
                     html += `
-                        <div class="wa-message ${isOutgoing?'outgoing':'incoming'}">
-                            ${msg.message ? `<div class="wa-message-text">${frappe.utils.escape_html(msg.message).replace(/\n/g,"<br>")}</div>` : ''}
-                            ${attachment}
+                        <div class="wa-message ${isOutgoing?'outgoing':'incoming'}" data-message-id="${msg.name}">
+                            ${media_content}
                             <div class="wa-message-time">
                                 ${time}
                                 ${tick_icon}
@@ -946,6 +1194,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         append_local_message(text);
         $("#wa-message-input").val("");
         $("#wa-send-btn").prop("disabled", true);
+        $("#wa-message-input").css("height", "auto");
 
         frappe.call({
             method: "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_reply.send_whatsapp_reply",
@@ -957,12 +1206,12 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                         .find(".wa-tick").removeClass("wa-tick-sent").addClass("wa-tick-delivered");
                     load_messages(active_customer, active_contact);
                 } else {
-                    frappe.msgprint("Failed to send message");
+                    frappe.show_alert({message: "Failed to send message: " + (r.message?.error || "Unknown error"), indicator: 'red'}, 3);
                 }
             },
             error() {
                 $("#wa-send-btn").prop("disabled", false);
-                frappe.msgprint("Network error");
+                frappe.show_alert({message: "Network error while sending message", indicator: 'red'}, 3);
             }
         });
     }
@@ -972,6 +1221,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         if (container) {
             container.scrollTop = container.scrollHeight;
         }
+        user_at_bottom = true;
     }
 
     window.open_lightbox = function(src, type) {
@@ -993,16 +1243,65 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         lightbox.fadeIn(200);
     };
 
+    // Auto-expand textarea
+    const textarea = $("#wa-message-input");
+    textarea.on("input", function() {
+        this.style.height = "auto";
+        this.style.height = Math.min(this.scrollHeight, 100) + "px";
+    });
+
+    // Real-time event handling
+    function subscribe_realtime() {
+        if (realtime_subscribed) return;
+        
+        frappe.realtime.on('whatsapp_new_message', function(data) {
+            console.log('New WhatsApp message received:', data);
+            if (data.contact_number === active_contact) {
+                load_messages(active_customer, active_contact);
+                frappe.utils.play_sound("message");
+            }
+            load_conversations();
+        });
+
+        frappe.realtime.on('whatsapp_message_status_changed', function(data) {
+            console.log('Message status changed:', data);
+            if (data.contact_number === active_contact) {
+                const $message = $(`.wa-message[data-message-id="${data.message_name}"]`);
+                if ($message.length) {
+                    const $tick = $message.find('.wa-tick');
+                    if ($tick.length) {
+                        $tick.removeClass('wa-tick-sent wa-tick-delivered wa-tick-read');
+                        
+                        if (data.new_status === 'delivered') {
+                            $tick.addClass('wa-tick-delivered');
+                        } else if (data.new_status === 'read') {
+                            $tick.addClass('wa-tick-read');
+                        }
+                    }
+                }
+            }
+        });
+
+        realtime_subscribed = true;
+    }
+
+    // Event listeners
+    $("#wa-messages-area").on('scroll', check_scroll_position);
+    
     $(document).on("click", "#wa-send-btn", send_message);
-    $(document).on("keypress", "#wa-message-input", e => {
-        if (e.which === 13 && !e.shiftKey) { 
+    $(document).on("keydown", "#wa-message-input", function(e) {
+        if (e.key === "Enter" && !e.shiftKey) { 
             e.preventDefault(); 
             send_message(); 
         }
     });
 
+    // Initialize
     init_emoji_picker();
     init_attachment();
+    subscribe_realtime();
     load_conversations();
-    setInterval(load_conversations, 30000);
+    
+    // Auto-refresh conversations every 30 seconds
+    setInterval(() => load_conversations(), 30000);
 };
