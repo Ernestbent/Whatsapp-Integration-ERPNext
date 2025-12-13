@@ -196,6 +196,23 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 z-index: 1;
             }
             
+            /* Date Separator - WhatsApp Style */
+            .wa-date-separator {
+                text-align: center;
+                margin: 20px 0;
+                position: relative;
+            }
+            
+            .wa-date-badge {
+                display: inline-block;
+                background: rgba(0,0,0,0.1);
+                color: #667781;
+                padding: 5px 15px;
+                border-radius: 15px;
+                font-size: 12px;
+                font-weight: 500;
+            }
+            
             /* Modern Message Bubbles */
             .wa-message {
                 max-width: 65%;
@@ -761,6 +778,37 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         return `${hours}:${minutes} ${ampm}`;
     }
 
+    // Format date display like WhatsApp (DD/MM/YYYY)
+    function format_date_display(date_str) {
+        if (!date_str) return "";
+        
+        const date = new Date(date_str);
+        const now = new Date();
+        
+        // Format as DD/MM/YYYY (WhatsApp style)
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+        const year = date.getFullYear();
+        
+        // Check if it's today
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        
+        if (messageDate.getTime() === today.getTime()) {
+            return "Today";
+        } 
+        
+        // Check if it's yesterday
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (messageDate.getTime() === yesterday.getTime()) {
+            return "Yesterday";
+        }
+        
+        // Otherwise show DD/MM/YYYY
+        return `${day}/${month}/${year}`;
+    }
+
     function render_media_content(message) {
         const type = message.message_type;
         const file_url = message.custom_document;
@@ -1133,8 +1181,23 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 let html = "";
                 const unread_ids = [];
                 const unread_message_ids = [];
+                let lastDate = null;
 
                 (r.message || []).forEach(msg => {
+                    // Get date from creation timestamp
+                    const msgDate = frappe.datetime.str_to_user(msg.creation).split(' ')[0]; // YYYY-MM-DD format
+                    const displayDate = format_date_display(msg.creation);
+                    
+                    // Add date separator if date changed
+                    if (msgDate !== lastDate) {
+                        html += `
+                            <div class="wa-date-separator">
+                                <span class="wa-date-badge">${displayDate}</span>
+                            </div>
+                        `;
+                        lastDate = msgDate;
+                    }
+
                     if (msg.custom_status === "Incoming" && !msg.custom_read) {
                         unread_ids.push(msg.name);
                         if (msg.message_id) {
@@ -1204,7 +1267,11 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 if (r.message?.success) {
                     $(".sending-msg").last().removeClass("sending-msg")
                         .find(".wa-tick").removeClass("wa-tick-sent").addClass("wa-tick-delivered");
-                    load_messages(active_customer, active_contact);
+                    
+                    // Refresh messages to show date separator if needed
+                    setTimeout(() => {
+                        load_messages(active_customer, active_contact);
+                    }, 1000);
                 } else {
                     frappe.show_alert({message: "Failed to send message: " + (r.message?.error || "Unknown error"), indicator: 'red'}, 3);
                 }
