@@ -31,8 +31,7 @@ Before installing the integration on your ERPNext site, you first need to downlo
 ```bash
 bench get-app https://github.com/Ernestbent/Whatsapp-Integration-ERPNext.git
 ```
-
-**Step 1: Install app on site**
+---
 **Step 1: Install App on Your Site**
 
 After fetching the app, you need to install it on a specific ERPNext site. This step registers the WhatsApp integration with the site, creates necessary DocTypes, fields, and backend logic, and makes the features available within the ERPNext interface. Without installing the app on the site, the integration cannot function or appear in the ERPNext UI.
@@ -40,6 +39,7 @@ After fetching the app, you need to install it on a specific ERPNext site. This 
 ```bash
 bench --site {sitename} install-app whatsapp_integration
 
+```
 
 **Step 2: Run Bench Migrate**
 ```bash
