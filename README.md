@@ -25,10 +25,13 @@ This integration connects WhatsApp Business with ERPNext, enabling automated mes
 ---
 
 ## Installation
+
+Before installing the integration on your ERPNext site, you first need to **download the WhatsApp integration app** into your bench environment. This step ensures that the app’s code is available locally and can be installed on one or more sites managed by your bench. Without this step, ERPNext would not recognize the integration as an installable app.
+
 **Step 0: Get the App**
 ```bash
 bench get-app https://github.com/Ernestbent/Whatsapp-Integration-ERPNext.git
-```
+
 
 **Step 1: Install app on site**
 ```bash
