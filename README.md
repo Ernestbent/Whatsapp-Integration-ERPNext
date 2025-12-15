@@ -42,9 +42,11 @@ bench --site {sitename} install-app whatsapp_integration
 ```
 
 **Step 2: Run Bench Migrate**
+
+After installing the app, running `bench migrate` ensures that all database schema changes introduced by the WhatsApp integration are applied to your ERPNext site. This step creates or updates the necessary tables, fields, and permissions required for the integration to function properly. Skipping this step may cause errors or missing functionality when using the app.
+
 ```bash
 bench --site {sitename} migrate
-```
 
 
 
