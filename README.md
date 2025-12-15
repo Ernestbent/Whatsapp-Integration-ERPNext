@@ -17,7 +17,8 @@ This integration connects WhatsApp Business with ERPNext, enabling automated mes
 ## Prerequisites
 - **ERPNext** version: specify your version (e.g., 14.x or 15.x)
 - **Frappe** version: specify version
-- WhatsApp Business API or supported third-party service (like Twilio, Vonage, or 360dialog)
+- An Application created on Meta Developers Account with Business Profile and so on.
+- Message Templates which can be created in ERPNext under Message Template Document.
 - Python 3.10+ (depending on your ERPNext version)
 - Node.js if any front-end integration is used (optional)
 
