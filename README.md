@@ -1,41 +1,30 @@
-### ERPNext Whatsapp
+# WhatsApp – ERPNext Integration
 
-This App integrates with Whatsapp 
+## Overview
+This integration connects WhatsApp Business with ERPNext, enabling automated messaging and real-time communication with customers. The integration works on specific event hooks such as submission of Sales Orders, Delivery Notes, Sales Invoices, and Payment Entries. Additionally, it provides a dedicated GUI page within ERPNext to chat directly with customers.
 
-### Installation
+---
 
-You can install this app using the [bench](https://github.com/frappe/bench) CLI:
+## Features
+- Send WhatsApp messages from ERPNext Sales Orders, Invoices, or other documents.
+- Receive messages and log them within ERPNext.
+- Attach message logs to relevant customers or documents.
+- Support for automated alerts for transactions or workflow actions.
+- Easy configuration of WhatsApp API credentials.
 
+---
+
+## Prerequisites
+- **ERPNext** version: specify your version (e.g., 14.x or 15.x)
+- **Frappe** version: specify version
+- WhatsApp Business API or supported third-party service (like Twilio, Vonage, or 360dialog)
+- Python 3.10+ (depending on your ERPNext version)
+- Node.js if any front-end integration is used (optional)
+
+---
+
+## Installation
+
+**Step 0: Get the App**
 ```bash
-cd $PATH_TO_YOUR_BENCH
-bench get-app $URL_OF_THIS_REPO --branch develop
-bench install-app whatsapp_integration
-```
-
-### Contributing
-
-This app uses `pre-commit` for code formatting and linting. Please [install pre-commit](https://pre-commit.com/#installation) and enable it for this repository:
-
-```bash
-cd apps/whatsapp_integration
-pre-commit install
-```
-
-Pre-commit is configured to use the following tools for checking and formatting your code:
-
-- ruff
-- eslint
-- prettier
-- pyupgrade
-
-### CI
-
-This app can use GitHub Actions for CI. The following workflows are configured:
-
-- CI: Installs this app and runs unit tests on every push to `develop` branch.
-- Linters: Runs [Frappe Semgrep Rules](https://github.com/frappe/semgrep-rules) and [pip-audit](https://pypi.org/project/pip-audit/) on every pull request.
-
-
-### License
-
-mit
+bench get-app https://github.com/Ernestbent/Whatsapp-Integration-ERPNext.git
