@@ -30,10 +30,16 @@ This integration connects WhatsApp Business with ERPNext, enabling automated mes
 bench get-app https://github.com/Ernestbent/Whatsapp-Integration-ERPNext.git
 ```
 
-**Step 0: Install app on site**
+**Step 1: Install app on site**
 ```bash
 bench --site {sitename} install-app whatsapp_integration
 
 ```
+
+**Step 2: Run Bench Migrate**
+```bash
+bench --site {sitename} migrate
+```
+
 
 
