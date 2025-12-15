@@ -47,6 +47,38 @@ After installing the app, running `bench migrate` ensures that all database sche
 
 ```bash
 bench --site {sitename} migrate
+```
+---
+
+## WhatsApp Settings
+
+The **WhatsApp Settings** Doctype is where you configure your WhatsApp Business integration for ERPNext. This is a central configuration point that stores all necessary credentials and connection details required to send and receive messages.  
+
+### Key Fields
+
+| Field | Description |
+|-------|-------------|
+| **Access Token** | The authentication token provided by the WhatsApp Business API or Meta Developers account. Required for API calls. |
+| **Phone Number ID** | The ID of the WhatsApp Business phone number used to send messages. |
+| **Business Account ID** | The Meta/WhatsApp Business account ID associated with your number. |
+| **Webhook Verify Token** | A token used to verify the webhook endpoint for incoming messages. |
+| **Last Sync On** | Timestamp of the last successful sync with WhatsApp API. |
+
+### Purpose
+
+- Authenticate ERPNext to communicate with WhatsApp Business API.
+- Store business account and phone number details centrally.
+- Manage webhook verification for incoming messages.
+- Enable sending and receiving WhatsApp messages from ERPNext documents like Sales Orders, Invoices, Delivery Notes, and Payment Entries.
+
+---
+
+### Screenshot Example
+
+![WhatsApp Settings Screenshot](Whatsapp Settings(1).png)
+
+> The screenshot shows filled fields such as Access Token, Phone Number ID, Business Account ID, and Webhook Verify Token, giving users a clear idea of how to set up their own configuration.
+
 
 
 
