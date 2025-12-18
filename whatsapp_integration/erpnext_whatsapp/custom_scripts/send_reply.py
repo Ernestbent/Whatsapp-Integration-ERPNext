@@ -43,7 +43,7 @@ def send_whatsapp_reply(to_number, message_body, reply_to_message_id=None):
         now = frappe.utils.now()
         current_time = now.strftime("%H:%M:%S") if hasattr(now, "strftime") else now.split(" ")[-1][:8]
 
-        # SAVE AS OUTGOING
+        # SAVE AS OUTGOING WITH MESSAGE_ID
         frappe.get_doc({
             "doctype": "Whatsapp Message",
             "from_number": to_number,
@@ -51,7 +51,9 @@ def send_whatsapp_reply(to_number, message_body, reply_to_message_id=None):
             "message_type": "text",
             "timestamp": current_time,
             "customer": frappe.db.get_value("Customer", {"whatsapp_number": ["like", f"%{to_number[-9:]}%"]}, "name") or "",
-            "custom_status": "Outgoing"
+            "custom_status": "Outgoing",
+            "message_status": "sent",  # Initial status
+            "message_id": sent_msg_id  # CRITICAL: Save WhatsApp message ID
         }).insert(ignore_permissions=True)
 
         return {"success": True, "message_id": sent_msg_id}
@@ -233,7 +235,7 @@ def send_whatsapp_media_message(to_number, media_id, filename, file_type, captio
         now = frappe.utils.now()
         current_time = now.strftime("%H:%M:%S") if hasattr(now, "strftime") else now.split(" ")[-1][:8]
 
-        # Save with local_file_url for preview
+        # Save with local_file_url for preview AND message_id
         frappe.get_doc({
             "doctype": "Whatsapp Message",
             "from_number": to_number,
@@ -242,7 +244,9 @@ def send_whatsapp_media_message(to_number, media_id, filename, file_type, captio
             "timestamp": current_time,
             "custom_document": local_file_url or "Attachment",
             "customer": frappe.db.get_value("Customer", {"whatsapp_number": ["like", f"%{to_number[-9:]}%"]}, "name") or "",
-            "custom_status": "Outgoing"
+            "custom_status": "Outgoing",
+            "message_status": "sent",  # Initial status
+            "message_id": sent_msg_id  # CRITICAL: Save WhatsApp message ID
         }).insert(ignore_permissions=True)
 
         return {"success": True, "message_id": sent_msg_id}
@@ -316,7 +320,9 @@ def send_whatsapp_attachment_by_url(to_number, file_url, filename, file_type, ca
             "timestamp": current_time,
             "custom_document": file_url,  # fall back to original url
             "customer": frappe.db.get_value("Customer", {"whatsapp_number": ["like", f"%{to_number[-9:]}%"]}, "name") or "",
-            "custom_status": "Outgoing"
+            "custom_status": "Outgoing",
+            "message_status": "sent",  # ADD THIS - Initial status
+            "message_id": sent_msg_id  # CRITICAL: Save WhatsApp message ID
         }).insert(ignore_permissions=True)
 
         return {"success": True, "message_id": sent_msg_id}

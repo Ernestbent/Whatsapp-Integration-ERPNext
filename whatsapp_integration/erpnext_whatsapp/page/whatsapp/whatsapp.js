@@ -650,15 +650,45 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
 		'💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','🔥','✨','⭐','🌟','💫','💥','🎉','🎊'
 	];
 
-	function get_whatsapp_ticks(status, is_read) {
-		const statusLower = (status || '').toString().toLowerCase().trim();
-		if (status === "Incoming") return '';
-		if (is_read) {
-			return `<svg class="wa-tick wa-tick-read" viewBox="0 0 16 15"><path fill="currentColor" d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.88a.32.32 0 0 1-.484.032l-.358-.325a.32.32 0 0 0-.484.032l-.378.48a.418.418 0 0 0 .036.54l1.32 1.267a.32.32 0 0 0 .484-.034l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.88a.32.32 0 0 1-.484.032L1.892 7.77a.366.366 0 0 0-.516.005l-.423.433a.364.364 0 0 0 .006.514l3.255 3.185a.32.32 0 0 0 .484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/></svg>`;
-		} else {
-			return `<svg class="wa-tick wa-tick-delivered" viewBox="0 0 16 15"><path fill="currentColor" d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.88a.32.32 0 0 1-.484.032l-.358-.325a.32.32 0 0 0-.484.032l-.378.48a.418.418 0 0 0 .036.54l1.32 1.267a.32.32 0 0 0 .484-.034l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.88a.32.32 0 0 1-.484.032L1.892 7.77a.366.366 0 0 0-.516.005l-.423.433a.364.364 0 0 0 .006.514l3.255 3.185a.32.32 0 0 0 .484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/></svg>`;
-		}
-	}
+	function get_whatsapp_ticks(status, is_read, message_status) {
+    if (status === "Incoming") return '';
+    
+    // Check message_status field FIRST - this is what matters most
+    const msg_status = (message_status || '').toLowerCase();
+    
+    // BLUE ticks for READ status (highest priority)
+    if (msg_status === 'read') {
+        return `<svg class="wa-tick wa-tick-read" viewBox="0 0 16 15">
+            <path fill="currentColor" d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.88a.32.32 0 0 1-.484.032l-.358-.325a.32.32 0 0 0-.484.032l-.378.48a.418.418 0 0 0 .036.54l1.32 1.267a.32.32 0 0 0 .484-.034l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.88a.32.32 0 0 1-.484.032L1.892 7.77a.366.366 0 0 0-.516.005l-.423.433a.364.364 0 0 0 .006.514l3.255 3.185a.32.32 0 0 0 .484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
+        </svg>`;
+    }
+    
+    // GREY double ticks for DELIVERED status
+    if (msg_status === 'delivered') {
+        return `<svg class="wa-tick wa-tick-delivered" viewBox="0 0 16 15">
+            <path fill="currentColor" d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.88a.32.32 0 0 1-.484.032l-.358-.325a.32.32 0 0 0-.484.032l-.378.48a.418.418 0 0 0 .036.54l1.32 1.267a.32.32 0 0 0 .484-.034l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.88a.32.32 0 0 1-.484.032L1.892 7.77a.366.366 0 0 0-.516.005l-.423.433a.364.364 0 0 0 .006.514l3.255 3.185a.32.32 0 0 0 .484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
+        </svg>`;
+    }
+    
+    // GREY single tick for SENT status
+    if (msg_status === 'sent' || msg_status === 'accepted') {
+        return `<svg class="wa-tick wa-tick-sent" viewBox="0 0 16 15">
+            <path fill="currentColor" d="M10.91 3.316l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.88a.32.32 0 0 1-.484.032L1.892 7.77a.366.366 0 0 0-.516.005l-.423.433a.364.364 0 0 0 .006.514l3.255 3.185a.32.32 0 0 0 .484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
+        </svg>`;
+    }
+    
+    // Fallback: Use custom_read field if message_status is not set
+    if (is_read) {
+        return `<svg class="wa-tick wa-tick-read" viewBox="0 0 16 15">
+            <path fill="currentColor" d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.88a.32.32 0 0 1-.484.032l-.358-.325a.32.32 0 0 0-.484.032l-.378.48a.418.418 0 0 0 .036.54l1.32 1.267a.32.32 0 0 0 .484-.034l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.88a.32.32 0 0 1-.484.032L1.892 7.77a.366.366 0 0 0-.516.005l-.423.433a.364.364 0 0 0 .006.514l3.255 3.185a.32.32 0 0 0 .484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
+        </svg>`;
+    }
+    
+    // Default: single grey tick for any outgoing message
+    return `<svg class="wa-tick wa-tick-sent" viewBox="0 0 16 15">
+        <path fill="currentColor" d="M10.91 3.316l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.88a.32.32 0 0 1-.484.032L1.892 7.77a.366.366 0 0 0-.516.005l-.423.433a.364.364 0 0 0 .006.514l3.255 3.185a.32.32 0 0 0 .484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
+    </svg>`;
+}
 
 	function format_timestamp(timestamp) {
 		if (!timestamp) return "";
@@ -803,6 +833,15 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
 
 		$("#wa-messages-area").append(html);
 		scrollToBottomDelayed();
+		
+		// IMMEDIATELY update conversation preview when attachment is shown
+		if (isTemp && active_contact) {
+			const preview_text = fileType.startsWith('image/') ? '📷 Photo' : 
+			                    fileType.startsWith('video/') ? '🎥 Video' :
+			                    fileType === 'application/pdf' ? '📄 ' + file.name : 
+			                    '📎 ' + file.name;
+			update_conversation_preview(active_contact, active_customer, preview_text, true);
+		}
 	}
 
 	function formatFileSize(bytes) {
@@ -813,11 +852,76 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
 		return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 	}
 
+	function format_phone_display(phone_number) {
+		if (!phone_number) return "Unknown";
+		const clean = phone_number.replace(/\D/g, '');
+		if (clean.length === 12 && clean.startsWith('256')) {
+			return `+${clean.slice(0,3)} ${clean.slice(3,6)} ${clean.slice(6,9)} ${clean.slice(9)}`;
+		} else if (clean.length >= 10) {
+			const last10 = clean.slice(-10);
+			return `+${clean.slice(0,-10)} ${last10.slice(0,3)} ${last10.slice(3,6)} ${last10.slice(6)}`;
+		}
+		return `+${clean}`;
+	}
+
+	// NEW FUNCTION: Update conversation preview in real-time
+	function update_conversation_preview(contact, customer, message_text, is_outgoing = false) {
+		const displayName = customer || format_phone_display(contact);
+		
+		// Find the chat item
+		let $chatItem = $(`.wa-chat-item[data-contact="${contact}"]`);
+		
+		if ($chatItem.length) {
+			// Update existing chat item
+			const preview = (message_text || "").substring(0, 45) + (message_text.length > 45 ? "..." : "");
+			$chatItem.find('.wa-chat-preview').text(preview);
+			$chatItem.find('.wa-chat-time').text('Just now');
+			
+			// Move to top of list
+			$chatItem.detach().prependTo('#wa-chat-list');
+			
+			// Remove unread badge if outgoing message
+			if (is_outgoing) {
+				$chatItem.find('.wa-unread-badge').remove();
+			}
+		} else {
+			// Create new chat item if doesn't exist
+			const preview = (message_text || "").substring(0, 45) + (message_text.length > 45 ? "..." : "");
+			const html = `<div class="wa-chat-item" data-contact="${contact}" data-customer="${customer || ''}">
+				<div class="wa-avatar">${frappe.utils.escape_html(displayName).charAt(0).toUpperCase()}</div>
+				<div class="wa-chat-info">
+					<div class="wa-chat-name">${frappe.utils.escape_html(displayName)}</div>
+					<div class="wa-chat-preview">${frappe.utils.escape_html(preview) || "No message"}</div>
+				</div>
+				<div class="wa-chat-meta">
+					<div class="wa-chat-time">Just now</div>
+				</div>
+			</div>`;
+			
+			$('#wa-chat-list').prepend(html);
+			
+			// Bind click event to new item
+			$(`.wa-chat-item[data-contact="${contact}"]`).on("click", function() {
+				$(".wa-chat-item").removeClass("active");
+				$(this).addClass("active");
+				active_contact = $(this).data("contact");
+				active_customer = $(this).data("customer");
+				const displayName = active_customer || format_phone_display(active_contact);
+				$("#wa-header-name").text(displayName);
+				$("#wa-profile-avatar").text(displayName.charAt(0).toUpperCase());
+				if ($(window).width() <= 768) $('.wa-sidebar').addClass('hidden');
+				show_cached_messages(active_customer, active_contact);
+				load_messages(active_customer, active_contact, false);
+			});
+		}
+	}
+
 	async function send_attachment(file) {
 		if (!active_contact || !file) return;
 
 		try {
 			const base64Data = await fileToBase64(file);
+			
 			frappe.call({
 				method: "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_reply.send_whatsapp_attachment",
 				args: {
@@ -867,18 +971,6 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
 		const html = `<div class="wa-message outgoing sending-msg"><div class="wa-message-content"><div class="wa-message-text">${frappe.utils.escape_html(text).replace(/\n/g,"<br>")}</div><div class="wa-message-footer"><span>${format_timestamp(time)}</span><svg class="wa-tick wa-tick-sent" viewBox="0 0 16 15"><path fill="currentColor" d="M10.91 3.316l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.88a.32.32 0 0 1-.484.032L1.892 7.77a.366.366 0 0 0-.516.005l-.423.433a.364.364 0 0 0 .006.514l3.255 3.185a.32.32 0 0 0 .484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/></svg></div></div></div>`;
 		$("#wa-messages-area").append(html);
 		scrollToBottomDelayed();
-	}
-
-	function format_phone_display(phone_number) {
-		if (!phone_number) return "Unknown";
-		const clean = phone_number.replace(/\D/g, '');
-		if (clean.length === 12 && clean.startsWith('256')) {
-			return `+${clean.slice(0,3)} ${clean.slice(3,6)} ${clean.slice(6,9)} ${clean.slice(9)}`;
-		} else if (clean.length >= 10) {
-			const last10 = clean.slice(-10);
-			return `+${clean.slice(0,-10)} ${last10.slice(0,3)} ${last10.slice(3,6)} ${last10.slice(6)}`;
-		}
-		return `+${clean}`;
 	}
 
 	function load_conversations() {
@@ -988,7 +1080,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
 			method: "frappe.client.get_list",
 			args: {
 				doctype: "Whatsapp Message",
-				fields: ["name","message","from_number","creation","custom_status","custom_document","custom_read","message_id","message_type","timestamp"],
+				fields: ["name","message","from_number","creation","custom_status","custom_document","custom_read","message_id","message_type","timestamp","message_status"],
 				filters: customer ? [["customer","=",customer]] : [["from_number","=",contact]],
 				order_by: "creation asc",
 				limit_page_length: 1000
@@ -1024,7 +1116,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
 
 					const isOutgoing = msg.custom_status !== "Incoming";
 					const time = msg.timestamp ? format_timestamp(msg.timestamp) : frappe.datetime.str_to_user(msg.creation).split(' ')[1].slice(0,5);
-					const tick_icon = get_whatsapp_ticks(msg.custom_status, msg.custom_read);
+					const tick_icon = get_whatsapp_ticks(msg.custom_status, msg.custom_read, msg.message_status);
 					const media_content = render_media_content(msg);
 
 					html += `<div class="wa-message ${isOutgoing ? 'outgoing' : 'incoming'}" data-message-id="${msg.name}"><div class="wa-message-content">${media_content}<div class="wa-message-footer"><span>${time}</span>${tick_icon}</div></div></div>`;
@@ -1067,6 +1159,9 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
 		$("#wa-message-input").val("").css("height", "auto");
 		$("#wa-send-btn").prop("disabled", true);
 
+		// IMMEDIATELY update the conversation list in real-time
+		update_conversation_preview(active_contact, active_customer, text, true);
+
 		frappe.call({
 			method: "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_reply.send_whatsapp_reply",
 			args: {to_number: active_contact, message_body: text},
@@ -1074,6 +1169,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
 				$("#wa-send-btn").prop("disabled", false);
 				if (r.message?.success) {
 					$(".sending-msg").last().removeClass("sending-msg").find(".wa-tick").removeClass("wa-tick-sent").addClass("wa-tick-delivered");
+					// Refresh messages to get the actual saved message
 					setTimeout(() => load_messages(active_customer, active_contact, true), 1000);
 				} else {
 					frappe.show_alert({message: "Failed to send", indicator: 'red'}, 3);
@@ -1153,6 +1249,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
 				load_messages(active_customer, active_contact, true);
 				frappe.utils.play_sound("message");
 			}
+			// Also update conversation list for incoming messages
 			load_conversations();
 		});
 
@@ -1161,10 +1258,26 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
 				const $message = $(`.wa-message[data-message-id="${data.message_name}"]`);
 				if ($message.length) {
 					const $tick = $message.find('.wa-tick');
+					const new_status = (data.new_status || '').toLowerCase();
+					
 					if ($tick.length) {
 						$tick.removeClass('wa-tick-sent wa-tick-delivered wa-tick-read');
-						if (data.new_status === 'delivered') $tick.addClass('wa-tick-delivered');
-						else if (data.new_status === 'read') $tick.addClass('wa-tick-read');
+						
+						// One tick for sent
+						if (new_status === 'sent' || new_status === 'accepted') {
+							$tick.addClass('wa-tick-sent');
+							$tick.html('<path fill="currentColor" d="M10.91 3.316l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.88a.32.32 0 0 1-.484.032L1.892 7.77a.366.366 0 0 0-.516.005l-.423.433a.364.364 0 0 0 .006.514l3.255 3.185a.32.32 0 0 0 .484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>');
+						}
+						// Two GREY ticks for delivered
+						else if (new_status === 'delivered') {
+							$tick.addClass('wa-tick-delivered');
+							$tick.html('<path fill="currentColor" d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.88a.32.32 0 0 1-.484.032l-.358-.325a.32.32 0 0 0-.484.032l-.378.48a.418.418 0 0 0 .036.54l1.32 1.267a.32.32 0 0 0 .484-.034l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.88a.32.32 0 0 1-.484.032L1.892 7.77a.366.366 0 0 0-.516.005l-.423.433a.364.364 0 0 0 .006.514l3.255 3.185a.32.32 0 0 0 .484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>');
+						}
+						// Two BLUE ticks for read
+						else if (new_status === 'read') {
+							$tick.addClass('wa-tick-read');  // This is the key - wa-tick-read class for blue color
+							$tick.html('<path fill="currentColor" d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.88a.32.32 0 0 1-.484.032l-.358-.325a.32.32 0 0 0-.484.032l-.378.48a.418.418 0 0 0 .036.54l1.32 1.267a.32.32 0 0 0 .484-.034l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.88a.32.32 0 0 1-.484.032L1.892 7.77a.366.366 0 0 0-.516.005l-.423.433a.364.364 0 0 0 .006.514l3.255 3.185a.32.32 0 0 0 .484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>');
+						}
 					}
 				}
 			}

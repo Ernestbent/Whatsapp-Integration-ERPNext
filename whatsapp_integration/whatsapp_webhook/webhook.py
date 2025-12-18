@@ -88,24 +88,52 @@ def handle_message_status(status):
         msg_id = status.get("id")
         new_status = status.get("status")
         ts = status.get("timestamp")
+        
         if not msg_id or not new_status:
             return
+            
+        # Find message by WhatsApp message ID
         msg_name = frappe.db.get_value("Whatsapp Message", {"message_id": msg_id}, "name")
+        
         if not msg_name:
+            # Log for debugging
+            wa_log("MESSAGE_NOT_FOUND", f"Message with ID {msg_id} not found in database")
+            
+            # Try to find recent messages for debugging
+            recent_msgs = frappe.db.get_all("Whatsapp Message",
+                filters={"custom_status": "Outgoing"},
+                fields=["name", "message_id", "creation"],
+                order_by="creation desc",
+                limit=5
+            )
+            wa_log("RECENT_MESSAGES", f"Recent outgoing messages: {recent_msgs}")
             return
+            
         contact_number = frappe.db.get_value("Whatsapp Message", msg_name, "from_number")
-        frappe.db.set_value("Whatsapp Message", msg_name, {
-            "message_status": new_status,
-            "status_timestamp": datetime.fromtimestamp(int(ts)).strftime("%Y-%m-%d %H:%M:%S")
-        }, update_modified=False)
+        
+        # Convert WhatsApp timestamp to time string for your timestamp field
+        # WhatsApp timestamp is Unix timestamp, convert to "HH:MM:SS" format
+        status_time = datetime.fromtimestamp(int(ts)).strftime("%H:%M:%S")
+        
+        # Update ONLY message_status (timestamp field is already set when message was created)
+        frappe.db.set_value("Whatsapp Message", msg_name, 
+            "message_status", new_status, 
+            update_modified=False)
+        
         frappe.db.commit()
+        
+        wa_log("STATUS_UPDATED", 
+            f"Updated {msg_name} from {contact_number} to status: {new_status}")
+        
+        # Publish realtime event for frontend
         if contact_number:
             frappe.publish_realtime("whatsapp_message_status_changed", {
                 "contact_number": contact_number,
                 "message_name": msg_name,
                 "new_status": new_status,
-                "timestamp": datetime.fromtimestamp(int(ts)).strftime("%H:%M:%S")
+                "timestamp": status_time
             }, after_commit=True)
+            
     except Exception as e:
         wa_log("Status Update Error", f"{str(e)}\n{frappe.get_traceback()}")
 
@@ -280,8 +308,7 @@ def link_whatsapp_messages_to_customer(doc, method=None):
         if clean.startswith("0"):
             patterns.append("256" + clean[1:])
         
-        # Find all messages with this phone number that don't have a customer linked
-        # OR have a different customer linked (in case of phone number change)
+        # Get all messages with this phone number that don't have a customer linked
         updated_count = 0
         for pattern in patterns:
             messages = frappe.db.get_all("Whatsapp Message",
