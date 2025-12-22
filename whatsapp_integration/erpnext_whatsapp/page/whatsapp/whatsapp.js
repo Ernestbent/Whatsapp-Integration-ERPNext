@@ -557,7 +557,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
     let customer_name_cache = {};
     let realtime_subscribed = false;
     let user_at_bottom = true;
-    let message_cache = {}; // Cache messages by contact number
+    let message_cache = {};
     
     const common_emojis = [
         '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙',
@@ -667,27 +667,35 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         const message_text = message.message;
         
         if (!file_url) {
-            return `<div class="wa-message-text">${frappe.utils.escape_html(message_text||'')}</div>`;
+            // Convert \n to <br> for proper newline display
+            return `<div class="wa-message-text">${frappe.utils.escape_html(message_text||'').replace(/\n/g,"<br>")}</div>`;
         }
         
         switch(type) {
             case 'image':
                 const safeImageUrl = frappe.utils.escape_html(file_url);
-                return `<div class="wa-media-container"><img src="${safeImageUrl}" alt="Image" onload="if(window.scrollAfterLoad) window.scrollAfterLoad()" onclick="open_lightbox('${safeImageUrl}', 'image')" />${message_text && !message_text.startsWith('Image:') ? `<div class="wa-media-caption">${frappe.utils.escape_html(message_text)}</div>` : ''}</div>`;
+                // Convert \n to <br> in captions too
+                return `<div class="wa-media-container"><img src="${safeImageUrl}" alt="Image" onload="if(window.scrollAfterLoad) window.scrollAfterLoad()" onclick="open_lightbox('${safeImageUrl}', 'image')" />${message_text && !message_text.startsWith('Image:') ? `<div class="wa-media-caption">${frappe.utils.escape_html(message_text).replace(/\n/g,"<br>")}</div>` : ''}</div>`;
+            
             case 'document':
                 const filename = message_text ? message_text.replace('Document: ', '').split(' – ')[0] : 'Document';
                 const file_ext = filename.split('.').pop().toUpperCase();
                 const safeFileUrl = frappe.utils.escape_html(file_url);
                 const safeFilename = frappe.utils.escape_html(filename);
                 return `<div class="wa-document-preview"><div class="wa-doc-icon">${file_ext}</div><div class="wa-doc-info"><div class="wa-doc-name">${safeFilename}</div><div class="wa-doc-meta"><a href="${safeFileUrl}" target="_blank" download="${safeFilename}" class="wa-download-link">📥 Click to download</a></div></div></div>`;
+            
             case 'video':
                 const safeVideoUrl = frappe.utils.escape_html(file_url);
-                return `<div class="wa-media-container"><video controls onloadeddata="if(window.scrollAfterLoad) window.scrollAfterLoad()" onclick="open_lightbox('${safeVideoUrl}', 'video')"><source src="${safeVideoUrl}" type="video/mp4"></video>${message_text && !message_text.startsWith('Video:') ? `<div class="wa-media-caption">${frappe.utils.escape_html(message_text)}</div>` : ''}</div>`;
+                // Convert \n to <br> in captions too
+                return `<div class="wa-media-container"><video controls onloadeddata="if(window.scrollAfterLoad) window.scrollAfterLoad()" onclick="open_lightbox('${safeVideoUrl}', 'video')"><source src="${safeVideoUrl}" type="video/mp4"></video>${message_text && !message_text.startsWith('Video:') ? `<div class="wa-media-caption">${frappe.utils.escape_html(message_text).replace(/\n/g,"<br>")}</div>` : ''}</div>`;
+            
             case 'audio':
                 const safeAudioUrl = frappe.utils.escape_html(file_url);
                 return `<audio controls src="${safeAudioUrl}" style="max-width: 300px;"></audio>`;
+            
             default:
-                return `<div class="wa-message-text">${frappe.utils.escape_html(message_text||'Unsupported message type')}</div>`;
+                // Convert \n to <br> for unsupported types too
+                return `<div class="wa-message-text">${frappe.utils.escape_html(message_text||'Unsupported message type').replace(/\n/g,"<br>")}</div>`;
         }
     }
     
@@ -780,7 +788,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
     }
     
     async function send_attachment(file) {
-        if (!active_contact || !file) return;
+        if (!active_contact || !file) return; 
         
         try {
             const base64Data = await fileToBase64(file);
@@ -851,11 +859,9 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 const phoneNumbers = new Set();
                 
                 r.message.forEach(msg => {
-                    // Group by phone number (from_number) only
                     const key = msg.from_number;
                     phoneNumbers.add(key);
                     
-                    // Only update if this is a newer message or if we don't have this contact yet
                     if (!convMap[key] || new Date(msg.creation) > new Date(convMap[key].creation)) {
                         convMap[key] = msg;
                     }
@@ -865,7 +871,6 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                     }
                 });
                 
-                // Get the latest customer name for each phone number if available
                 frappe.call({
                     method: "frappe.client.get_list",
                     args: {
@@ -886,7 +891,6 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                         let html = "";
                         Object.keys(convMap).forEach(key => {
                             const msg = convMap[key];
-                            // Use customer name if available, otherwise use phone number
                             const displayName = customerMap[key] || format_phone_display(msg.from_number);
                             const preview = (msg.message||"").substring(0,45)+(msg.message.length>45?"...":"");
                             const unread = unreadMap[key] || 0;
@@ -940,12 +944,10 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         });
     }
     
-    // Global function for media load events
     window.scrollAfterLoad = function() {
         scrollToBottomDelayed();
     };
     
-    // Global function for delayed scrolling
     window.scrollToBottomDelayed = function() {
         scrollToBottom(true);
         setTimeout(() => scrollToBottom(true), 100);
@@ -972,7 +974,6 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             $("#wa-loading").show();
         }
         
-        // Get ALL messages for this contact number, regardless of customer field
         frappe.call({
             method: "frappe.client.get_list",
             args: {
@@ -997,7 +998,6 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 const unread_message_ids = [];
                 let lastDate = null;
                 
-                // Sort messages by creation date
                 const sortedMessages = (r.message || []).sort((a, b) => new Date(a.creation) - new Date(b.creation));
                 
                 sortedMessages.forEach(msg => {
@@ -1019,7 +1019,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                     const tick_icon = get_whatsapp_ticks(msg.custom_status, msg.custom_read, msg.message_status);
                     const media_content = render_media_content(msg);
                     
-                    html += `<div class="wa-message ${isOutgoing ? 'outgoing' : 'incoming'}" data-message-id="${msg.name}">
+                    html += `<div class="wa-message ${isOutgoing ? 'outgoing' : 'incoming'}" data-message-id="${msg.name}" data-message-status="${msg.message_status||''}">
                                 <div class="wa-message-content">
                                     ${media_content}
                                     <div class="wa-message-footer">
@@ -1029,10 +1029,8 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                             </div>`;
                 });
                 
-                // Cache the messages by contact number
                 message_cache[cacheKey] = html;
                 
-                // Only update if this is the active conversation
                 if (active_contact === contact_number) {
                     if (html) {
                         $("#wa-empty-state").hide();
@@ -1128,7 +1126,6 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         lightbox.fadeIn(200);
     };
     
-    // Close lightbox when clicking outside
     $(document).on('click', '.wa-lightbox', function(e) {
         if (e.target === this || $(e.target).hasClass('wa-lightbox-close')) {
             $('#wa-lightbox').fadeOut(200);
@@ -1153,60 +1150,262 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         this.style.height = Math.min(this.scrollHeight, 100) + "px";
     });
     
+    // Enhanced real-time subscription with debugging
     function subscribe_realtime() {
-        if (realtime_subscribed) return;
+        if (realtime_subscribed) {
+            console.log('Realtime already subscribed');
+            return;
+        }
         
+        console.log('Subscribing to real-time events...');
+        
+        // Listen for new messages
         frappe.realtime.on('whatsapp_new_message', function(data) {
-            if (data.contact_number === active_contact) {
-                load_messages(active_contact, true);
-                frappe.utils.play_sound("message");
+            console.log('📨 New message event received:', data);
+            
+            if (data && data.contact_number) {
+                console.log('Processing message for contact:', data.contact_number);
+                console.log('Active contact:', active_contact);
+                
+                // Refresh messages for the active contact
+                if (data.contact_number === active_contact) {
+                    console.log('Refreshing messages for active contact');
+                    load_messages(active_contact, true);
+                    
+                    // Play notification sound
+                    if (frappe.utils.play_sound) {
+                        frappe.utils.play_sound("message");
+                    }
+                }
+                
+                // Always refresh conversation list
+                console.log('Refreshing conversation list');
+                load_conversations();
+            } else {
+                console.warn('Invalid data received in whatsapp_new_message:', data);
             }
-            load_conversations();
         });
         
+        // Listen for message status updates
         frappe.realtime.on('whatsapp_message_status_changed', function(data) {
-            if (data.contact_number === active_contact) {
-                const $message = $(`.wa-message[data-message-id="${data.message_name}"]`);
-                if ($message.length) {
-                    const $tick = $message.find('.wa-tick');
-                    const new_status = (data.new_status || '').toLowerCase();
-                    if ($tick.length) {
-                        $tick.removeClass('wa-tick-sent wa-tick-delivered wa-tick-read');
-                        if (new_status === 'sent' || new_status === 'accepted') $tick.addClass('wa-tick-sent');
-                        else if (new_status === 'delivered') $tick.addClass('wa-tick-delivered');
-                        else if (new_status === 'read') $tick.addClass('wa-tick-read');
+            console.log('📊 Message status update received:', data);
+            
+            if (data && data.message_name && data.new_status) {
+                console.log(`Updating status for message ${data.message_name} to ${data.new_status}`);
+                
+                // Update the specific message tick in UI
+                update_message_tick(data.message_name, data.new_status);
+                
+                // Refresh conversation list if this message belongs to active contact
+                if (data.contact_number === active_contact) {
+                    console.log('Refreshing conversations due to status change');
+                    setTimeout(() => load_conversations(), 500);
+                }
+            }
+        });
+        
+        // Also subscribe to more generic events
+        frappe.realtime.on('message_updated', function(data) {
+            console.log('Generic message update:', data);
+            if (data && data.doctype === 'Whatsapp Message') {
+                load_conversations();
+                if (active_contact && data.doc && data.doc.from_number === active_contact) {
+                    load_messages(active_contact, true);
+                }
+            }
+        });
+        
+        frappe.realtime.on('value_updated', function(data) {
+            console.log('Value update:', data);
+            if (data && data.doctype === 'Whatsapp Message') {
+                load_conversations();
+            }
+        });
+        
+        // Add heartbeat to check connection
+        frappe.realtime.on('connected', function() {
+            console.log('✅ Realtime connection established');
+        });
+        
+        frappe.realtime.on('disconnected', function() {
+            console.log('❌ Realtime connection lost');
+            // Try to resubscribe
+            setTimeout(subscribe_realtime, 5000);
+        });
+        
+        // Also set up polling as fallback
+        setup_polling_fallback();
+        
+        realtime_subscribed = true;
+        console.log('✅ Real-time subscriptions initialized');
+    }
+    
+    // Helper function to update individual message tick
+    function update_message_tick(message_name, new_status) {
+        const $message = $(`.wa-message[data-message-id="${message_name}"]`);
+        
+        if ($message.length && $message.hasClass('outgoing')) {
+            const $footer = $message.find('.wa-message-footer');
+            
+            if ($footer.length) {
+                // Preserve the time
+                const timeText = $footer.find('span').first().text();
+                
+                // Generate new tick HTML (custom_read is false since we only have status)
+                const newTickHtml = get_whatsapp_ticks('Outgoing', false, new_status);
+                
+                // Update footer
+                $footer.html(`<span>${timeText}</span>${newTickHtml}`);
+                
+                // Update data attribute
+                $message.attr('data-message-status', new_status);
+                
+                console.log(`✅ Tick updated for ${message_name} to ${new_status}`);
+                
+                // Also update the conversation list tick if needed
+                update_conversation_list_tick(message_name, new_status);
+            } else {
+                console.log(`Footer not found for message: ${message_name}`);
+            }
+        } else {
+            console.log(`Message element not found or not outgoing: ${message_name}. Found ${$message.length} elements`);
+        }
+    }
+    
+    // Update tick in conversation list
+    function update_conversation_list_tick(message_name, new_status) {
+        // Get the contact from the message
+        frappe.call({
+            method: "frappe.client.get_value",
+            args: {
+                doctype: "Whatsapp Message",
+                fieldname: "from_number",
+                filters: { name: message_name }
+            },
+            callback(r) {
+                if (r.message && r.message.from_number) {
+                    const contact = r.message.from_number;
+                    // Find and update the conversation item
+                    const $chatItem = $(`.wa-chat-item[data-contact="${contact}"]`);
+                    if ($chatItem.length) {
+                        const $preview = $chatItem.find('.wa-chat-preview');
+                        const previewText = $preview.text().replace(/^\s*/, '');
+                        const newTickHtml = get_whatsapp_ticks('Outgoing', false, new_status);
+                        $preview.html(`${newTickHtml}${previewText}`);
                     }
                 }
             }
-            load_conversations();
         });
-        
-        realtime_subscribed = true;
     }
     
-    $("#wa-messages-area").on('scroll', check_scroll_position);
-    $(document).on("click", "#wa-send-btn", send_message);
-    $(document).on("keydown", "#wa-message-input", function(e) {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            send_message();
-        }
-    });
+    // Polling fallback for real-time
+    function setup_polling_fallback() {
+        console.log('Setting up polling fallback...');
+        
+        // Poll for new messages every 5 seconds
+        setInterval(() => {
+            if (active_contact) {
+                // Check for new messages for active contact
+                frappe.call({
+                    method: "frappe.client.get_list",
+                    args: {
+                        doctype: "Whatsapp Message",
+                        fields: ["name", "creation"],
+                        filters: [
+                            ["from_number", "=", active_contact],
+                            ["creation", ">", frappe.datetime.add_seconds(frappe.datetime.now_datetime(), -10)]
+                        ],
+                        limit: 1
+                    },
+                    callback(r) {
+                        if (r.message && r.message.length > 0) {
+                            console.log('Polling: New message detected');
+                            load_messages(active_contact, true);
+                        }
+                    }
+                });
+            }
+            
+            // Check for status updates on outgoing messages
+            frappe.call({
+                method: "frappe.client.get_list",
+                args: {
+                    doctype: "Whatsapp Message",
+                    fields: ["name", "message_status", "custom_status"],
+                    filters: [
+                        ["custom_status", "=", "Outgoing"],
+                        ["message_status", "not in", ["read", "delivered"]],
+                        ["creation", ">", frappe.datetime.add_days(frappe.datetime.now_datetime(), -1)]
+                    ],
+                    limit: 10
+                },
+                callback(r) {
+                    if (r.message && r.message.length > 0) {
+                        r.message.forEach(msg => {
+                            if (msg.message_status) {
+                                update_message_tick(msg.name, msg.message_status);
+                            }
+                        });
+                    }
+                }
+            });
+            
+        }, 5000); // Poll every 5 seconds
+    }
     
-    // Auto-close sidebar on mobile when clicking outside
-    $(document).on('click', function(e) {
-        if ($(window).width() <= 768) {
-            if ($('.wa-sidebar').hasClass('hidden') === false) {
-                if (!$(e.target).closest('.wa-sidebar').length && !$(e.target).is('#wa-back-btn')) {
-                    $('.wa-sidebar').addClass('hidden');
+    // Initialize event listeners
+    function setup_event_listeners() {
+        $("#wa-messages-area").on('scroll', check_scroll_position);
+        
+        $(document).on("click", "#wa-send-btn", send_message);
+        
+        $(document).on("keydown", "#wa-message-input", function(e) {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send_message();
+            }
+        });
+        
+        // Mobile sidebar handling
+        $(document).on('click', function(e) {
+            if ($(window).width() <= 768) {
+                if (!$('.wa-sidebar').hasClass('hidden')) {
+                    if (!$(e.target).closest('.wa-sidebar').length && !$(e.target).is('#wa-back-btn')) {
+                        $('.wa-sidebar').addClass('hidden');
+                    }
                 }
             }
-        }
-    });
+        });
+        
+        // Enable send button when there's text
+        $("#wa-message-input").on('input', function() {
+            const hasText = $(this).val().trim().length > 0;
+            $("#wa-send-btn").prop('disabled', !hasText);
+        });
+    }
     
-    init_emoji_picker();
-    init_attachment();
-    subscribe_realtime();
-    load_conversations();
-    setInterval(() => load_conversations(), 30000);
+    // Initialize everything
+    function initialize() {
+        console.log('Initializing WhatsApp chat...');
+        
+        init_emoji_picker();
+        init_attachment();
+        setup_event_listeners();
+        subscribe_realtime();
+        load_conversations();
+        
+        // Refresh conversations every 30 seconds as backup
+        setInterval(() => {
+            console.log('Scheduled refresh of conversations');
+            load_conversations();
+        }, 30000);
+        
+        // Initial scroll
+        setTimeout(() => scrollToBottom(true), 100);
+        
+        console.log('✅ WhatsApp chat initialized');
+    }
+    
+    // Start initialization
+    initialize();
 };

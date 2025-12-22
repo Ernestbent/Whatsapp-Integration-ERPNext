@@ -1,4 +1,3 @@
-# File: whatsapp_integration/erpnext_whatsapp/custom_scripts/send_reply.py
 import frappe
 import requests
 import base64
@@ -55,6 +54,7 @@ def send_whatsapp_reply(to_number, message_body, reply_to_message_id=None):
             "message_status": "sent",  # Initial status
             "message_id": sent_msg_id  # CRITICAL: Save WhatsApp message ID
         }).insert(ignore_permissions=True)
+        frappe.db.commit()
 
         return {"success": True, "message_id": sent_msg_id}
 
@@ -72,6 +72,15 @@ def send_whatsapp_reply(to_number, message_body, reply_to_message_id=None):
             message=f"To: {to_number}\nError: {error_msg}"
         )
         return {"success": False, "error": error_msg}
+
+
+@frappe.whitelist()
+def send_notification_message(to_number, message_body, customer_name=None):
+    """
+    Send WhatsApp notification message (for automated notifications)
+    This is a wrapper around send_whatsapp_reply specifically for notifications
+    """
+    return send_whatsapp_reply(to_number, message_body, reply_to_message_id=None)
 
 
 @frappe.whitelist()
@@ -122,7 +131,7 @@ def send_whatsapp_attachment(to_number, file_data=None, filename=None, file_type
                 "doctype": "File",
                 "file_name": filename,
                 "folder": "Home",  # Organized folder
-                "is_private": 0,  # Public for direct access
+                "is_private": 0,  # Set to public for direct access
                 "content": binary_data
             })
             file_doc.insert(ignore_permissions=True)
@@ -131,7 +140,7 @@ def send_whatsapp_attachment(to_number, file_data=None, filename=None, file_type
         except Exception as e:
             frappe.log_error(f"Failed to save local file: {str(e)}", "WhatsApp Local File Save")
 
-        # --- Upload to WhatsApp ---
+        # Upload to WhatsApp 
         upload_url = f"https://graph.facebook.com/{version}/{phone_id}/media"
 
         files = {
@@ -246,8 +255,9 @@ def send_whatsapp_media_message(to_number, media_id, filename, file_type, captio
             "customer": frappe.db.get_value("Customer", {"whatsapp_number": ["like", f"%{to_number[-9:]}%"]}, "name") or "",
             "custom_status": "Outgoing",
             "message_status": "sent",  # Initial status
-            "message_id": sent_msg_id  # CRITICAL: Save WhatsApp message ID
+            "message_id": sent_msg_id  # Save WhatsApp message ID
         }).insert(ignore_permissions=True)
+        frappe.db.commit()
 
         return {"success": True, "message_id": sent_msg_id}
 
@@ -321,9 +331,10 @@ def send_whatsapp_attachment_by_url(to_number, file_url, filename, file_type, ca
             "custom_document": file_url,  # fall back to original url
             "customer": frappe.db.get_value("Customer", {"whatsapp_number": ["like", f"%{to_number[-9:]}%"]}, "name") or "",
             "custom_status": "Outgoing",
-            "message_status": "sent",  # ADD THIS - Initial status
-            "message_id": sent_msg_id  # CRITICAL: Save WhatsApp message ID
+            "message_status": "sent",
+            "message_id": sent_msg_id  # Save WhatsApp message ID
         }).insert(ignore_permissions=True)
+        frappe.db.commit()
 
         return {"success": True, "message_id": sent_msg_id}
 
