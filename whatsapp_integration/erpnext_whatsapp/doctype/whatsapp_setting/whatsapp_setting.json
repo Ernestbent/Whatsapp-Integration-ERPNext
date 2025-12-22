@@ -9,7 +9,8 @@
   "phone_number_id",
   "column_break_bnaw",
   "business_account_id",
-  "webhook_verify_token"
+  "webhook_verify_token",
+  "app_id"
  ],
  "fields": [
   {
@@ -36,13 +37,18 @@
    "fieldname": "webhook_verify_token",
    "fieldtype": "Data",
    "label": "Webhook Verify Token"
+  },
+  {
+   "fieldname": "app_id",
+   "fieldtype": "Data",
+   "label": "App ID"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-11-10 16:58:01.236383",
+ "modified": "2025-12-22 16:26:33.957939",
  "modified_by": "Administrator",
  "module": "ERPNext Whatsapp",
  "name": "Whatsapp Setting",

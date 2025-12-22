@@ -2,7 +2,7 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "field:template_name",
- "creation": "2025-12-04 10:40:42.817056",
+ "creation": "2025-12-22 15:00:48.112839",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -15,7 +15,6 @@
   "status",
   "parameter_format",
   "header_component_section",
-  "type",
   "format",
   "text",
   "column_break_dguq",
@@ -38,6 +37,12 @@
    "fieldname": "template_name",
    "fieldtype": "Data",
    "label": "Template Name",
+   "unique": 1
+  },
+  {
+   "fieldname": "id",
+   "fieldtype": "Data",
+   "label": "Meta ID",
    "unique": 1
   },
   {
@@ -74,12 +79,6 @@
    "fieldname": "header_component_section",
    "fieldtype": "Section Break",
    "label": "Header Component"
-  },
-  {
-   "fieldname": "type",
-   "fieldtype": "Select",
-   "label": "Type",
-   "options": "documentation\nimage\nlocation\ntext\nvideo"
   },
   {
    "fieldname": "format",
@@ -138,18 +137,12 @@
    "fieldname": "table_pkhd",
    "fieldtype": "Table",
    "options": "Buttons"
-  },
-  {
-   "fieldname": "id",
-   "fieldtype": "Data",
-   "label": "Meta ID",
-   "unique": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-12-04 12:15:53.556664",
+ "modified": "2025-12-22 15:01:03.380570",
  "modified_by": "Administrator",
  "module": "ERPNext Whatsapp",
  "name": "Whatsapp Message Template",
