@@ -3,6 +3,61 @@ import requests
 import base64
 import mimetypes
 import os
+from datetime import datetime
+
+
+## Real-time Event Emitter for Send Reply
+def emit_whatsapp_send_event(to_number, message_id, doc_name, message_type="text", media_url=None):
+    """
+    Emit real-time events when sending messages
+    """
+    try:
+        # Get customer info
+        customer = frappe.db.get_value("Customer", 
+            {"whatsapp_number": ["like", f"%{to_number[-9:]}%"]}, 
+            "name") or ""
+        
+        # Emit new message event
+        frappe.publish_realtime(
+            event="whatsapp_new_message",
+            message={
+                "contact_number": to_number,
+                "message_name": doc_name,
+                "message_id": message_id,
+                "message_type": "outgoing",
+                "whatsapp_type": message_type,
+                "customer": customer,
+                "media_url": media_url,
+                "timestamp": datetime.now().isoformat(),
+                "action": "new_outgoing_message"
+            },
+            user=None,
+            after_commit=True
+        )
+        
+        # Also emit status event (initial sent status)
+        frappe.publish_realtime(
+            event="whatsapp_message_status_changed",
+            message={
+                "message_name": doc_name,
+                "message_id": message_id,
+                "new_status": "sent",
+                "contact_number": to_number,
+                "timestamp": datetime.now().isoformat()
+            },
+            user=None,
+            after_commit=True
+        )
+        
+        # Log for debugging
+        frappe.log_error(
+            title="WhatsApp Send Event Emitted",
+            message=f"To: {to_number}, Message ID: {message_id}, Doc: {doc_name}"
+        )
+        
+    except Exception as e:
+        frappe.log_error("Send Event Error", str(e))
+
 
 @frappe.whitelist()
 def send_whatsapp_reply(to_number, message_body, reply_to_message_id=None):
@@ -42,21 +97,35 @@ def send_whatsapp_reply(to_number, message_body, reply_to_message_id=None):
         now = frappe.utils.now()
         current_time = now.strftime("%H:%M:%S") if hasattr(now, "strftime") else now.split(" ")[-1][:8]
 
+        # Get customer
+        customer = frappe.db.get_value("Customer", 
+            {"whatsapp_number": ["like", f"%{to_number[-9:]}%"]}, 
+            "name") or ""
+
         # SAVE AS OUTGOING WITH MESSAGE_ID
-        frappe.get_doc({
+        doc = frappe.get_doc({
             "doctype": "Whatsapp Message",
             "from_number": to_number,
             "message": message_body,
             "message_type": "text",
             "timestamp": current_time,
-            "customer": frappe.db.get_value("Customer", {"whatsapp_number": ["like", f"%{to_number[-9:]}%"]}, "name") or "",
+            "customer": customer,
             "custom_status": "Outgoing",
             "message_status": "sent",  # Initial status
             "message_id": sent_msg_id  # CRITICAL: Save WhatsApp message ID
-        }).insert(ignore_permissions=True)
+        })
+        doc.insert(ignore_permissions=True)
         frappe.db.commit()
 
-        return {"success": True, "message_id": sent_msg_id}
+        # ✅ EMIT REAL-TIME EVENT
+        emit_whatsapp_send_event(
+            to_number=to_number,
+            message_id=sent_msg_id,
+            doc_name=doc.name,
+            message_type="text"
+        )
+
+        return {"success": True, "message_id": sent_msg_id, "doc_name": doc.name}
 
     except Exception as e:
         error_msg = str(e)
@@ -244,22 +313,37 @@ def send_whatsapp_media_message(to_number, media_id, filename, file_type, captio
         now = frappe.utils.now()
         current_time = now.strftime("%H:%M:%S") if hasattr(now, "strftime") else now.split(" ")[-1][:8]
 
+        # Get customer
+        customer = frappe.db.get_value("Customer", 
+            {"whatsapp_number": ["like", f"%{to_number[-9:]}%"]}, 
+            "name") or ""
+
         # Save with local_file_url for preview AND message_id
-        frappe.get_doc({
+        doc = frappe.get_doc({
             "doctype": "Whatsapp Message",
             "from_number": to_number,
             "message": caption or f"{filename or 'attachment'}",
             "message_type": msg_type,
             "timestamp": current_time,
             "custom_document": local_file_url or "Attachment",
-            "customer": frappe.db.get_value("Customer", {"whatsapp_number": ["like", f"%{to_number[-9:]}%"]}, "name") or "",
+            "customer": customer,
             "custom_status": "Outgoing",
             "message_status": "sent",  # Initial status
             "message_id": sent_msg_id  # Save WhatsApp message ID
-        }).insert(ignore_permissions=True)
+        })
+        doc.insert(ignore_permissions=True)
         frappe.db.commit()
 
-        return {"success": True, "message_id": sent_msg_id}
+        # ✅ EMIT REAL-TIME EVENT
+        emit_whatsapp_send_event(
+            to_number=to_number,
+            message_id=sent_msg_id,
+            doc_name=doc.name,
+            message_type=msg_type,
+            media_url=local_file_url
+        )
+
+        return {"success": True, "message_id": sent_msg_id, "doc_name": doc.name}
 
     except Exception as e:
         error_msg = str(e)
@@ -322,21 +406,36 @@ def send_whatsapp_attachment_by_url(to_number, file_url, filename, file_type, ca
         now = frappe.utils.now()
         current_time = now.strftime("%H:%M:%S") if hasattr(now, "strftime") else now.split(" ")[-1][:8]
 
-        frappe.get_doc({
+        # Get customer
+        customer = frappe.db.get_value("Customer", 
+            {"whatsapp_number": ["like", f"%{to_number[-9:]}%"]}, 
+            "name") or ""
+
+        doc = frappe.get_doc({
             "doctype": "Whatsapp Message",
             "from_number": to_number,
             "message": caption or f"{filename or 'attachment'}",
             "message_type": msg_type,
             "timestamp": current_time,
             "custom_document": file_url,  # fall back to original url
-            "customer": frappe.db.get_value("Customer", {"whatsapp_number": ["like", f"%{to_number[-9:]}%"]}, "name") or "",
+            "customer": customer,
             "custom_status": "Outgoing",
             "message_status": "sent",
             "message_id": sent_msg_id  # Save WhatsApp message ID
-        }).insert(ignore_permissions=True)
+        })
+        doc.insert(ignore_permissions=True)
         frappe.db.commit()
 
-        return {"success": True, "message_id": sent_msg_id}
+        # ✅ EMIT REAL-TIME EVENT
+        emit_whatsapp_send_event(
+            to_number=to_number,
+            message_id=sent_msg_id,
+            doc_name=doc.name,
+            message_type=msg_type,
+            media_url=file_url
+        )
+
+        return {"success": True, "message_id": sent_msg_id, "doc_name": doc.name}
 
     except Exception as e:
         error_msg = str(e)
@@ -352,3 +451,22 @@ def send_whatsapp_attachment_by_url(to_number, file_url, filename, file_type, ca
             message=f"To: {to_number}\nURL: {file_url}\nError: {error_msg}"
         )
         return {"success": False, "error": error_msg}
+
+
+## Test Real-time Events
+@frappe.whitelist()
+def test_realtime_event(contact_number):
+    """
+    Test real-time event emission
+    """
+    try:
+        emit_whatsapp_send_event(
+            to_number=contact_number,
+            message_id=f"test_{datetime.now().timestamp()}",
+            doc_name=f"TEST_{datetime.now().timestamp()}",
+            message_type="text"
+        )
+        
+        return {"success": True, "message": "Test event sent"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}

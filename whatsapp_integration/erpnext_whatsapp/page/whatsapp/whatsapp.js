@@ -494,6 +494,51 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                     max-width: 250px;
                 }
             }
+            /* Connection status indicator */
+            .connection-status {
+                position: fixed;
+                bottom: 10px;
+                right: 10px;
+                padding: 8px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: 500;
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                transition: all 0.3s ease;
+            }
+            .connection-status.connected {
+                background: rgba(37, 211, 102, 0.1);
+                color: #25d366;
+                border: 1px solid rgba(37, 211, 102, 0.3);
+            }
+            .connection-status.disconnected {
+                background: rgba(255, 59, 48, 0.1);
+                color: #ff3b30;
+                border: 1px solid rgba(255, 59, 48, 0.3);
+            }
+            .connection-status.connecting {
+                background: rgba(255, 204, 0, 0.1);
+                color: #ffcc00;
+                border: 1px solid rgba(255, 204, 0, 0.3);
+            }
+            .status-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                display: inline-block;
+            }
+            .status-dot.connected { background: #25d366; }
+            .status-dot.disconnected { background: #ff3b30; }
+            .status-dot.connecting { background: #ffcc00; animation: pulse 1.5s infinite; }
+            
+            @keyframes pulse {
+                0% { opacity: 1; }
+                50% { opacity: 0.5; }
+                100% { opacity: 1; }
+            }
         </style>
         <div class="wa-container">
             <div class="wa-sidebar">
@@ -548,6 +593,11 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             <span class="wa-lightbox-close" onclick="$('#wa-lightbox').fadeOut(200);">×</span>
             <img id="wa-lightbox-img" src="" alt="" />
         </div>
+        <!-- Connection Status Indicator -->
+        <div id="connection-status" class="connection-status connecting" style="display: none;">
+            <span class="status-dot connecting"></span>
+            <span class="status-text">Connecting...</span>
+        </div>
     `);
     
     let active_contact = null;
@@ -558,6 +608,10 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
     let realtime_subscribed = false;
     let user_at_bottom = true;
     let message_cache = {};
+    let heartbeat_interval = null;
+    let reconnect_attempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 5;
+    let connection_status = 'disconnected';
     
     const common_emojis = [
         '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙',
@@ -570,41 +624,65 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         '💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','🔥','✨','⭐','🌟','💫','💥','🎉','🎊'
     ];
     
-    // WhatsApp tick logic: single grey tick, double grey ticks, blue double ticks
+    // =============== UTILITY FUNCTIONS ===============
+    
+    function update_connection_status(status, message = '') {
+        connection_status = status;
+        const $status = $('#connection-status');
+        const $dot = $status.find('.status-dot');
+        const $text = $status.find('.status-text');
+        
+        $status.removeClass('connected disconnected connecting').addClass(status);
+        $dot.removeClass('connected disconnected connecting').addClass(status);
+        
+        switch(status) {
+            case 'connected':
+                $text.text(message || 'Connected');
+                $status.fadeIn();
+                break;
+            case 'disconnected':
+                $text.text(message || 'Disconnected');
+                $status.fadeIn();
+                break;
+            case 'connecting':
+                $text.text(message || 'Connecting...');
+                $status.fadeIn();
+                break;
+        }
+        
+        console.log(`Connection status: ${status} - ${message}`);
+    }
+    
+    // WhatsApp tick logic
     function get_whatsapp_ticks(status, is_read, message_status) {
         if (status === "Incoming") return '';
         
         const msg_status = (message_status || '').toLowerCase();
         
-        // Single grey tick (message sent to WhatsApp server)
         if (msg_status === 'sent' || msg_status === 'accepted') {
             return `<svg class="wa-tick wa-tick-sent" viewBox="0 0 16 15">
                 <path fill="currentColor" d="M10.91 3.316l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.88a.32.32 0 0 1-.484.032L1.892 7.77a.366.366 0 0 0-.516.005l-.423.433a.364.364 0 0 0 .006.514l3.255 3.185a.32.32 0 0 0 .484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
             </svg>`;
         }
         
-        // Double grey ticks (message delivered to recipient's phone)
         if (msg_status === 'delivered') {
             return `<svg class="wa-tick wa-tick-delivered" viewBox="0 0 16 15">
                 <path fill="currentColor" d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.88a.32.32 0 0 1-.484.032l-.358-.325a.32.32 0 0 0-.484.032l-.378.48a.418.418 0 0 0 .036.54l1.32 1.267a.32.32 0 0 0 .484-.034l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.88a.32.32 0 0 1-.484.032L1.892 7.77a.366.366 0 0 0-.516.005l-.423.433a.364.364 0 0 0 .006.514l3.255 3.185a.32.32 0 0 0 .484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
             </svg>`;
         }
         
-        // Double blue ticks (message read by recipient)
         if (msg_status === 'read') {
             return `<svg class="wa-tick wa-tick-read" viewBox="0 0 16 15">
                 <path fill="currentColor" d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.88a.32.32 0 0 1-.484.032l-.358-.325a.32.32 0 0 0-.484.032l-.378.48a.418.418 0 0 0 .036.54l1.32 1.267a.32.32 0 0 0 .484-.034l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.88a.32.32 0 0 1-.484.032L1.892 7.77a.366.366 0 0 0-.516.005l-.423.433a.364.364 0 0 0 .006.514l3.255 3.185a.32.32 0 0 0 .484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
             </svg>`;
         }
         
-        // Fallback to custom_read field if no message_status
         if (is_read) {
             return `<svg class="wa-tick wa-tick-read" viewBox="0 0 16 15">
                 <path fill="currentColor" d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.88a.32.32 0 0 1-.484.032l-.358-.325a.32.32 0 0 0-.484.032l-.378.48a.418.418 0 0 0 .036.54l1.32 1.267a.32.32 0 0 0 .484-.034l6.272-8.048a.366.366 0 0 0-.064-.512zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.88a.32.32 0 0 1-.484.032L1.892 7.77a.366.366 0 0 0-.516.005l-.423.433a.364.364 0 0 0 .006.514l3.255 3.185a.32.32 0 0 0 .484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
             </svg>`;
         }
         
-        // Default to single grey tick if no status info
         return `<svg class="wa-tick wa-tick-sent" viewBox="0 0 16 15">
             <path fill="currentColor" d="M10.91 3.316l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.88a.32.32 0 0 1-.484.032L1.892 7.77a.366.366 0 0 0-.516.005l-.423.433a.364.364 0 0 0 .006.514l3.255 3.185a.32.32 0 0 0 .484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z"/>
         </svg>`;
@@ -667,14 +745,12 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         const message_text = message.message;
         
         if (!file_url) {
-            // Convert \n to <br> for proper newline display
             return `<div class="wa-message-text">${frappe.utils.escape_html(message_text||'').replace(/\n/g,"<br>")}</div>`;
         }
         
         switch(type) {
             case 'image':
                 const safeImageUrl = frappe.utils.escape_html(file_url);
-                // Convert \n to <br> in captions too
                 return `<div class="wa-media-container"><img src="${safeImageUrl}" alt="Image" onload="if(window.scrollAfterLoad) window.scrollAfterLoad()" onclick="open_lightbox('${safeImageUrl}', 'image')" />${message_text && !message_text.startsWith('Image:') ? `<div class="wa-media-caption">${frappe.utils.escape_html(message_text).replace(/\n/g,"<br>")}</div>` : ''}</div>`;
             
             case 'document':
@@ -686,7 +762,6 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             
             case 'video':
                 const safeVideoUrl = frappe.utils.escape_html(file_url);
-                // Convert \n to <br> in captions too
                 return `<div class="wa-media-container"><video controls onloadeddata="if(window.scrollAfterLoad) window.scrollAfterLoad()" onclick="open_lightbox('${safeVideoUrl}', 'video')"><source src="${safeVideoUrl}" type="video/mp4"></video>${message_text && !message_text.startsWith('Video:') ? `<div class="wa-media-caption">${frappe.utils.escape_html(message_text).replace(/\n/g,"<br>")}</div>` : ''}</div>`;
             
             case 'audio':
@@ -694,7 +769,6 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 return `<audio controls src="${safeAudioUrl}" style="max-width: 300px;"></audio>`;
             
             default:
-                // Convert \n to <br> for unsupported types too
                 return `<div class="wa-message-text">${frappe.utils.escape_html(message_text||'Unsupported message type').replace(/\n/g,"<br>")}</div>`;
         }
     }
@@ -705,6 +779,8 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         const threshold = 100;
         user_at_bottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
     }
+    
+    // =============== CHAT FUNCTIONS ===============
     
     function init_emoji_picker() {
         const emojiPicker = $('#wa-emoji-picker');
@@ -809,7 +885,6 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                             URL.revokeObjectURL(temp_file_url);
                             temp_file_url = null;
                         }
-                        setTimeout(() => load_messages(active_contact, true), 2000);
                         frappe.show_alert({message: "Attachment sent successfully", indicator: 'green'}, 2);
                     } else {
                         frappe.show_alert({message: "Failed to send attachment", indicator: 'red'}, 3);
@@ -1082,7 +1157,6 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 $("#wa-send-btn").prop("disabled", false);
                 if (r.message?.success) {
                     $(".sending-msg").last().removeClass("sending-msg").find(".wa-tick").removeClass("wa-tick-sent").addClass("wa-tick-delivered");
-                    setTimeout(() => load_messages(active_contact, true), 1000);
                 } else {
                     frappe.show_alert({message: "Failed to send", indicator: 'red'}, 3);
                 }
@@ -1150,94 +1224,141 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         this.style.height = Math.min(this.scrollHeight, 100) + "px";
     });
     
-    // Enhanced real-time subscription with debugging
-    function subscribe_realtime() {
-        if (realtime_subscribed) {
-            console.log('Realtime already subscribed');
+    // =============== REAL-TIME HANDLING ===============
+    
+    // Initialize real-time with proper connection management
+    function init_realtime() {
+        console.log('🚀 Initializing real-time system...');
+        update_connection_status('connecting', 'Connecting to real-time server...');
+        
+        // Check if we're already connected
+        if (frappe.realtime.socket && frappe.realtime.socket.connected) {
+            console.log('✅ Already connected to real-time');
+            update_connection_status('connected', 'Connected to real-time');
+            setup_realtime_listeners();
             return;
         }
         
-        console.log('Subscribing to real-time events...');
-        
-        // Listen for new messages
-        frappe.realtime.on('whatsapp_new_message', function(data) {
-            console.log('📨 New message event received:', data);
+        // Initialize real-time connection
+        try {
+            frappe.realtime.init();
             
-            if (data && data.contact_number) {
-                console.log('Processing message for contact:', data.contact_number);
-                console.log('Active contact:', active_contact);
+            // Give it a moment to connect, then setup listeners
+            setTimeout(() => {
+                if (frappe.realtime.socket && frappe.realtime.socket.connected) {
+                    console.log('✅ Real-time connection established');
+                    update_connection_status('connected', 'Real-time connected');
+                    setup_realtime_listeners();
+                } else {
+                    console.warn('⚠️ Real-time connection not established, retrying...');
+                    update_connection_status('connecting', 'Retrying connection...');
+                    setTimeout(init_realtime, 2000);
+                }
+            }, 1000);
+            
+        } catch (error) {
+            console.error('❌ Failed to initialize real-time:', error);
+            update_connection_status('disconnected', 'Failed to connect');
+            
+            // Fallback to polling mode
+            console.log('Falling back to polling mode...');
+            setup_polling_fallback();
+        }
+    }
+    
+    // Setup real-time event listeners
+    function setup_realtime_listeners() {
+        console.log('Setting up real-time listeners...');
+        
+        // Clear existing listeners to prevent duplicates
+        frappe.realtime.off('whatsapp_new_message');
+        frappe.realtime.off('whatsapp_message_status_changed');
+        frappe.realtime.off('doc_update');
+        
+        // 1. New message event (both incoming and outgoing)
+        frappe.realtime.on('whatsapp_new_message', function(data) {
+            console.log('🔔 whatsapp_new_message received:', data);
+            
+            if (!data || !data.contact_number) {
+                console.warn('Invalid message event data:', data);
+                return;
+            }
+            
+            const contact = data.contact_number;
+            const isActiveContact = (active_contact === contact);
+            const isIncoming = data.message_type === 'incoming';
+            
+            console.log(`Message event for: ${contact}, Active: ${isActiveContact}, Type: ${data.message_type}`);
+            
+            // Debounced refresh of conversation list
+            debounced_refresh_conversations();
+            
+            // If this is the active conversation, refresh messages
+            if (isActiveContact) {
+                console.log('Refreshing active conversation messages...');
                 
-                // Refresh messages for the active contact
-                if (data.contact_number === active_contact) {
-                    console.log('Refreshing messages for active contact');
-                    load_messages(active_contact, true);
-                    
-                    // Play notification sound
-                    if (frappe.utils.play_sound) {
+                // Play sound for incoming messages
+                if (isIncoming && frappe.utils.play_sound) {
+                    try {
                         frappe.utils.play_sound("message");
+                    } catch(e) {
+                        console.log('Sound play failed:', e);
                     }
                 }
                 
-                // Always refresh conversation list
-                console.log('Refreshing conversation list');
-                load_conversations();
-            } else {
-                console.warn('Invalid data received in whatsapp_new_message:', data);
+                // Load messages with a slight delay to ensure server has saved
+                setTimeout(() => {
+                    load_messages(contact, true);
+                }, 300);
             }
         });
         
-        // Listen for message status updates
+        // 2. Message status updates
         frappe.realtime.on('whatsapp_message_status_changed', function(data) {
-            console.log('📊 Message status update received:', data);
+            console.log('📊 whatsapp_message_status_changed received:', data);
             
             if (data && data.message_name && data.new_status) {
-                console.log(`Updating status for message ${data.message_name} to ${data.new_status}`);
-                
-                // Update the specific message tick in UI
+                // Update the specific message tick immediately
                 update_message_tick(data.message_name, data.new_status);
                 
-                // Refresh conversation list if this message belongs to active contact
-                if (data.contact_number === active_contact) {
-                    console.log('Refreshing conversations due to status change');
-                    setTimeout(() => load_conversations(), 500);
-                }
+                // Also refresh conversation list to update preview ticks
+                debounced_refresh_conversations();
             }
         });
         
-        // Also subscribe to more generic events
-        frappe.realtime.on('message_updated', function(data) {
-            console.log('Generic message update:', data);
-            if (data && data.doctype === 'Whatsapp Message') {
-                load_conversations();
-                if (active_contact && data.doc && data.doc.from_number === active_contact) {
-                    load_messages(active_contact, true);
-                }
-            }
-        });
-        
-        frappe.realtime.on('value_updated', function(data) {
-            console.log('Value update:', data);
-            if (data && data.doctype === 'Whatsapp Message') {
-                load_conversations();
-            }
-        });
-        
-        // Add heartbeat to check connection
+        // 3. Connection monitoring
         frappe.realtime.on('connected', function() {
-            console.log('✅ Realtime connection established');
+            console.log('✅ Real-time WebSocket connected');
+            update_connection_status('connected', 'Real-time connected');
+            reconnect_attempts = 0; // Reset reconnect attempts
+            
+            // Ensure listeners are setup
+            setup_realtime_listeners();
         });
         
         frappe.realtime.on('disconnected', function() {
-            console.log('❌ Realtime connection lost');
-            // Try to resubscribe
-            setTimeout(subscribe_realtime, 5000);
+            console.log('❌ Real-time WebSocket disconnected');
+            update_connection_status('disconnected', 'Real-time disconnected');
+            
+            // Try to reconnect with exponential backoff
+            reconnect_attempts++;
+            if (reconnect_attempts <= MAX_RECONNECT_ATTEMPTS) {
+                const delay = Math.min(1000 * Math.pow(2, reconnect_attempts), 10000);
+                console.log(`Reconnecting attempt ${reconnect_attempts} in ${delay}ms...`);
+                update_connection_status('connecting', `Reconnecting (${reconnect_attempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+                
+                setTimeout(() => {
+                    console.log('Attempting to reconnect...');
+                    frappe.realtime.init();
+                }, delay);
+            } else {
+                console.error('Max reconnect attempts reached, falling back to polling');
+                update_connection_status('disconnected', 'Using polling mode');
+                frappe.show_alert({message: 'Real-time disconnected, using polling for updates', indicator: 'orange'}, 5);
+            }
         });
         
-        // Also set up polling as fallback
-        setup_polling_fallback();
-        
-        realtime_subscribed = true;
-        console.log('✅ Real-time subscriptions initialized');
+        console.log('✅ Real-time listeners setup complete');
     }
     
     // Helper function to update individual message tick
@@ -1251,7 +1372,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 // Preserve the time
                 const timeText = $footer.find('span').first().text();
                 
-                // Generate new tick HTML (custom_read is false since we only have status)
+                // Generate new tick HTML
                 const newTickHtml = get_whatsapp_ticks('Outgoing', false, new_status);
                 
                 // Update footer
@@ -1261,87 +1382,85 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 $message.attr('data-message-status', new_status);
                 
                 console.log(`✅ Tick updated for ${message_name} to ${new_status}`);
-                
-                // Also update the conversation list tick if needed
-                update_conversation_list_tick(message_name, new_status);
-            } else {
-                console.log(`Footer not found for message: ${message_name}`);
             }
-        } else {
-            console.log(`Message element not found or not outgoing: ${message_name}. Found ${$message.length} elements`);
         }
     }
     
-    // Update tick in conversation list
-    function update_conversation_list_tick(message_name, new_status) {
-        // Get the contact from the message
-        frappe.call({
-            method: "frappe.client.get_value",
-            args: {
-                doctype: "Whatsapp Message",
-                fieldname: "from_number",
-                filters: { name: message_name }
-            },
-            callback(r) {
-                if (r.message && r.message.from_number) {
-                    const contact = r.message.from_number;
-                    // Find and update the conversation item
-                    const $chatItem = $(`.wa-chat-item[data-contact="${contact}"]`);
-                    if ($chatItem.length) {
-                        const $preview = $chatItem.find('.wa-chat-preview');
-                        const previewText = $preview.text().replace(/^\s*/, '');
-                        const newTickHtml = get_whatsapp_ticks('Outgoing', false, new_status);
-                        $preview.html(`${newTickHtml}${previewText}`);
-                    }
-                }
+    // Heartbeat to keep connection alive
+    function start_heartbeat() {
+        if (heartbeat_interval) clearInterval(heartbeat_interval);
+        
+        heartbeat_interval = setInterval(() => {
+            // Send heartbeat to keep connection alive
+            if (frappe.realtime.socket && frappe.realtime.socket.connected) {
+                frappe.realtime.socket.emit('heartbeat', {timestamp: Date.now()});
+            } else if (connection_status !== 'connecting') {
+                // If not connected and not already trying to connect, try to reconnect
+                console.log('Heartbeat: Connection lost, attempting to reconnect...');
+                init_realtime();
             }
-        });
+        }, 25000); // Every 25 seconds
+        
+        console.log('💓 Heartbeat started');
     }
     
-    // Polling fallback for real-time
+    // Debounced refresh for conversations
+    let refresh_conversations_timeout;
+    function debounced_refresh_conversations() {
+        clearTimeout(refresh_conversations_timeout);
+        refresh_conversations_timeout = setTimeout(() => {
+            load_conversations();
+        }, 300);
+    }
+    
+    // Setup polling as fallback (runs alongside real-time)
     function setup_polling_fallback() {
         console.log('Setting up polling fallback...');
         
-        // Poll for new messages every 5 seconds
+        // Poll for updates every 10 seconds
         setInterval(() => {
-            if (active_contact) {
-                // Check for new messages for active contact
-                frappe.call({
-                    method: "frappe.client.get_list",
-                    args: {
-                        doctype: "Whatsapp Message",
-                        fields: ["name", "creation"],
-                        filters: [
-                            ["from_number", "=", active_contact],
-                            ["creation", ">", frappe.datetime.add_seconds(frappe.datetime.now_datetime(), -10)]
-                        ],
-                        limit: 1
-                    },
-                    callback(r) {
-                        if (r.message && r.message.length > 0) {
-                            console.log('Polling: New message detected');
-                            load_messages(active_contact, true);
-                        }
-                    }
-                });
-            }
+            // Only poll if we have active contact or need updates
+            if (!active_contact && connection_status === 'connected') return;
             
-            // Check for status updates on outgoing messages
+            // Check for new messages using a simple timestamp check
+            const lastCheck = new Date(Date.now() - 15000).toISOString();
+            
             frappe.call({
                 method: "frappe.client.get_list",
                 args: {
                     doctype: "Whatsapp Message",
-                    fields: ["name", "message_status", "custom_status"],
+                    fields: ["name", "creation", "from_number", "custom_status", "message_status"],
                     filters: [
-                        ["custom_status", "=", "Outgoing"],
-                        ["message_status", "not in", ["read", "delivered"]],
-                        ["creation", ">", frappe.datetime.add_days(frappe.datetime.now_datetime(), -1)]
+                        ["creation", ">", lastCheck],
+                        ["from_number", "=", active_contact || ""]
                     ],
                     limit: 10
                 },
                 callback(r) {
                     if (r.message && r.message.length > 0) {
-                        r.message.forEach(msg => {
+                        console.log(`Polling: Found ${r.message.length} new/updated messages`);
+                        
+                        // Check if any are new messages for active contact
+                        const newMessages = r.message.filter(msg => 
+                            msg.creation > lastCheck && 
+                            msg.from_number === active_contact
+                        );
+                        
+                        if (newMessages.length > 0 && active_contact) {
+                            console.log(`Polling: ${newMessages.length} new messages for active contact`);
+                            load_messages(active_contact, true);
+                        }
+                        
+                        // Always refresh conversation list
+                        load_conversations();
+                        
+                        // Check for status updates
+                        const statusUpdates = r.message.filter(msg => 
+                            msg.message_status && 
+                            msg.custom_status === 'Outgoing'
+                        );
+                        
+                        statusUpdates.forEach(msg => {
                             if (msg.message_status) {
                                 update_message_tick(msg.name, msg.message_status);
                             }
@@ -1349,8 +1468,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                     }
                 }
             });
-            
-        }, 5000); // Poll every 5 seconds
+        }, 10000); // Every 10 seconds
     }
     
     // Initialize event listeners
@@ -1382,28 +1500,43 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             const hasText = $(this).val().trim().length > 0;
             $("#wa-send-btn").prop('disabled', !hasText);
         });
+        
+        // Connection status indicator click to reconnect
+        $('#connection-status').on('click', function() {
+            if (connection_status === 'disconnected') {
+                console.log('Manual reconnection requested...');
+                update_connection_status('connecting', 'Manual reconnection...');
+                init_realtime();
+            }
+        });
     }
     
     // Initialize everything
     function initialize() {
-        console.log('Initializing WhatsApp chat...');
+        console.log('🚀 Initializing WhatsApp chat...');
         
         init_emoji_picker();
         init_attachment();
         setup_event_listeners();
-        subscribe_realtime();
+        
+        // Load initial data
         load_conversations();
         
-        // Refresh conversations every 30 seconds as backup
-        setInterval(() => {
-            console.log('Scheduled refresh of conversations');
-            load_conversations();
-        }, 30000);
+        // Initialize real-time system
+        setTimeout(() => {
+            init_realtime();
+        }, 1000);
+        
+        // Setup polling as backup (always runs)
+        setup_polling_fallback();
+        
+        // Start heartbeat
+        start_heartbeat();
         
         // Initial scroll
         setTimeout(() => scrollToBottom(true), 100);
         
-        console.log('✅ WhatsApp chat initialized');
+        console.log('✅ WhatsApp chat fully initialized');
     }
     
     // Start initialization

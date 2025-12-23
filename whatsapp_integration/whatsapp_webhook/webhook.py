@@ -59,6 +59,25 @@ def is_duplicate_webhook(raw_data):
     return False
 
 
+## Real-time Event Emitter
+def emit_whatsapp_event(event_type, data):
+    """
+    Emit real-time events to all connected clients
+    """
+    try:
+        frappe.publish_realtime(
+            event=event_type,
+            message=data,
+            user=None,  # Send to all users
+            after_commit=True  # Important: wait for transaction to complete
+        )
+        
+        wa_log(f"Event Emitted: {event_type}", f"Data: {json.dumps(data)[:200]}")
+        
+    except Exception as e:
+        wa_log("Event Emit Error", f"{e}\n{frappe.get_traceback()}")
+
+
 ## Main Webhook Receiver
 @frappe.whitelist(allow_guest=True)
 def receive_whatsapp():
@@ -115,11 +134,12 @@ def process_whatsapp_message(payload):
                 handle_single_message(message)
 
 
-## Message Status Handler
+## Message Status Handler with Real-time Events
 def handle_message_status(status):
     try:
         msg_id = status.get("id")
         new_status = status.get("status")
+        recipient_id = status.get("recipient_id", "")
 
         if not msg_id or not new_status:
             return
@@ -133,6 +153,14 @@ def handle_message_status(status):
         if not msg_name:
             return
 
+        # Get the contact number for this message
+        contact_number = frappe.db.get_value(
+            "Whatsapp Message",
+            msg_name,
+            "from_number"
+        )
+
+        # Update status in database
         frappe.db.set_value(
             "Whatsapp Message",
             msg_name,
@@ -140,13 +168,41 @@ def handle_message_status(status):
             new_status,
             update_modified=False
         )
+        
+        # Also update the timestamp if available
+        timestamp = status.get("timestamp")
+        if timestamp:
+            try:
+                ts_time = datetime.fromtimestamp(int(timestamp)).strftime("%H:%M:%S")
+                frappe.db.set_value(
+                    "Whatsapp Message",
+                    msg_name,
+                    "timestamp",
+                    ts_time,
+                    update_modified=False
+                )
+            except:
+                pass
+        
         frappe.db.commit()
+
+        # ✅ EMIT REAL-TIME STATUS UPDATE EVENT
+        emit_whatsapp_event("whatsapp_message_status_changed", {
+            "message_name": msg_name,
+            "message_id": msg_id,
+            "new_status": new_status,
+            "contact_number": contact_number,
+            "recipient_id": recipient_id,
+            "timestamp": datetime.now().isoformat()
+        })
+
+        wa_log("Status Updated", f"{msg_name} -> {new_status} for {contact_number}")
 
     except Exception:
         wa_log("Status Update Error", frappe.get_traceback())
 
 
-## Single Message Handler
+## Single Message Handler with Real-time Events
 def handle_single_message(message):
     try:
         msg_type = message.get("type")
@@ -158,12 +214,28 @@ def handle_single_message(message):
 
         if msg_type == "text":
             message_text = message.get("text", {}).get("body", "")
+        elif msg_type == "image":
+            message_text = "Image received"
+            media_id = message.get("image", {}).get("id", "")
+        elif msg_type == "video":
+            message_text = "Video received"
+            media_id = message.get("video", {}).get("id", "")
+        elif msg_type == "audio":
+            message_text = "Audio received"
+            media_id = message.get("audio", {}).get("id", "")
+        elif msg_type == "document":
+            message_text = message.get("document", {}).get("filename", "Document received")
+            media_id = message.get("document", {}).get("id", "")
+        elif msg_type == "sticker":
+            message_text = "Sticker received"
+            media_id = message.get("sticker", {}).get("id", "")
         else:
             message_text = f"Received {msg_type}"
 
         customer = find_customer_by_whatsapp(from_number)
 
-        save_whatsapp_message(
+        # Save message and get the document
+        doc_name = save_whatsapp_message(
             message=message,
             message_text=message_text,
             media_id=media_id,
@@ -172,13 +244,41 @@ def handle_single_message(message):
             msg_id=msg_id
         )
 
+        # ✅ EMIT REAL-TIME NEW MESSAGE EVENT
+        if doc_name:
+            emit_whatsapp_event("whatsapp_new_message", {
+                "contact_number": from_number,
+                "message_name": doc_name,
+                "message_id": msg_id,
+                "message_type": "incoming",
+                "whatsapp_type": msg_type,
+                "message_text": message_text[:100],  # First 100 chars
+                "customer": customer,
+                "timestamp": datetime.now().isoformat(),
+                "action": "new_incoming_message"
+            })
+            
+            # Also emit generic doc_update for compatibility
+            frappe.publish_realtime(
+                event="doc_update",
+                message={
+                    "doctype": "Whatsapp Message",
+                    "name": doc_name,
+                    "from_number": from_number,
+                    "customer": customer,
+                    "action": "create"
+                },
+                user=None,
+                after_commit=True
+            )
+
         check_and_update_opt_in(from_number, message_text)
 
     except Exception:
         wa_log("Message Processing Error", frappe.get_traceback())
 
 
-## Save Message
+## Save Message and Return Document Name
 def save_whatsapp_message(message, message_text, media_id="", public_file_url=None, customer=None, msg_id=None):
     try:
         from_number = message.get("from")
@@ -200,9 +300,14 @@ def save_whatsapp_message(message, message_text, media_id="", public_file_url=No
         })
         doc.insert(ignore_permissions=True)
         frappe.db.commit()
+        
+        wa_log("Message Saved", f"{doc.name} from {from_number}")
+
+        return doc.name
 
     except Exception:
         wa_log("Save Message Failed", frappe.get_traceback())
+        return None
 
 
 ## Customer Look-up by WhatsApp Number
@@ -249,6 +354,9 @@ def check_and_update_opt_in(number, text):
             update_modified=False
         )
         frappe.db.commit()
+        
+        wa_log("Opt-In Updated", f"Customer {cust} opted in via WhatsApp")
+
 
 ## Link Whatsapp Messages to Customer on Customer Save
 def link_whatsapp_messages_to_customer(doc, method=None):
@@ -292,6 +400,36 @@ def link_whatsapp_messages_to_customer(doc, method=None):
                     )
 
         frappe.db.commit()
+        
+        # Emit event for updated messages
+        if messages:
+            emit_whatsapp_event("whatsapp_customer_linked", {
+                "customer": doc.name,
+                "whatsapp_number": doc.whatsapp_number,
+                "linked_messages": len(messages)
+            })
 
     except Exception:
         wa_log("Customer Link Error", frappe.get_traceback())
+
+
+## Manual Real-time Trigger (for testing)
+@frappe.whitelist()
+def trigger_realtime_test(contact_number, message_text="Test message"):
+    """
+    Manually trigger a real-time event for testing
+    """
+    try:
+        emit_whatsapp_event("whatsapp_new_message", {
+            "contact_number": contact_number,
+            "message_name": f"test_{datetime.now().timestamp()}",
+            "message_id": f"test_{datetime.now().timestamp()}",
+            "message_type": "incoming",
+            "message_text": message_text,
+            "timestamp": datetime.now().isoformat(),
+            "action": "test_event"
+        })
+        
+        return {"success": True, "message": "Test event triggered"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
