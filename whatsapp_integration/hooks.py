@@ -57,6 +57,9 @@ doctype_js = {
     "Delivery Note": [
         "public/js/send_template_delivery_note.js"
     ],
+    "Payment Entry": [
+        "public/js/send_payment_confrimation_template.js"
+    ],
     # "Whatsapp Live Chat": "public/js/whatsapp_live_chat.js",  
     # "Whatsapp Setting" : "public/js/create_chats_customers.js",
     "Whatsapp Message Template": "public/js/message_template_button.js",   
@@ -169,6 +172,7 @@ doc_events = {
         "on_submit": [
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_invoice_notification",
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.upload_media_whatsapp_cloud.send_proforma_background",
+            
         ]
     },
     "Delivery Note":{
@@ -188,6 +192,9 @@ doc_events = {
     "Payment Entry":{
         "on_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_message_templates.on_payment_entry_submit"
     },
+    # "Purchase Order":{
+    #     "on_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_message_templates.on_purchase_order_submit"
+    # }
    
 }
 
