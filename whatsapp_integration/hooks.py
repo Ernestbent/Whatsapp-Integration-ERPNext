@@ -209,6 +209,9 @@ doc_events = {
             "whatsapp_integration.whatsapp_webhook.webhook.link_whatsapp_messages_to_customer",
         ]
     },
+    "Payment Entry":{
+        "on_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_message_templates.on_payment_entry_submit"
+    },
    
 }
 

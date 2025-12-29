@@ -186,7 +186,7 @@ def handle_message_status(status):
         
         frappe.db.commit()
 
-        # ✅ EMIT REAL-TIME STATUS UPDATE EVENT
+        #  EMIT REAL-TIME STATUS UPDATE EVENT
         emit_whatsapp_event("whatsapp_message_status_changed", {
             "message_name": msg_name,
             "message_id": msg_id,
@@ -234,17 +234,25 @@ def handle_single_message(message):
 
         customer = find_customer_by_whatsapp(from_number)
 
-        # Save message and get the document
+        # Check for opt-in message BEFORE saving
+        is_optin_message = check_for_optin_message(message_text)
+
+        # Save message and get the document name
         doc_name = save_whatsapp_message(
             message=message,
             message_text=message_text,
             media_id=media_id,
             public_file_url=public_file_url,
             customer=customer,
-            msg_id=msg_id
+            msg_id=msg_id,
+            is_optin=is_optin_message  # Pass opt-in status
         )
 
-        # ✅ EMIT REAL-TIME NEW MESSAGE EVENT
+        # Update customer opt-in if this is an opt-in message
+        if is_optin_message:
+            update_customer_optin(from_number, customer)
+
+        #  EMIT REAL-TIME NEW MESSAGE EVENT
         if doc_name:
             emit_whatsapp_event("whatsapp_new_message", {
                 "contact_number": from_number,
@@ -254,6 +262,7 @@ def handle_single_message(message):
                 "whatsapp_type": msg_type,
                 "message_text": message_text[:100],  # First 100 chars
                 "customer": customer,
+                "is_optin": is_optin_message,
                 "timestamp": datetime.now().isoformat(),
                 "action": "new_incoming_message"
             })
@@ -272,14 +281,64 @@ def handle_single_message(message):
                 after_commit=True
             )
 
-        check_and_update_opt_in(from_number, message_text)
-
     except Exception:
         wa_log("Message Processing Error", frappe.get_traceback())
 
 
+## Check if message is opt-in
+def check_for_optin_message(text):
+    """
+    Check if message text contains the opt-in phrase
+    Returns True if it's an opt-in message
+    """
+    if not text:
+        return False
+    
+    normalized = normalize_text(text)
+    optin_phrase = "i want to receive exclusive deals and order updates from autozone professional limited"
+    
+    return optin_phrase in normalized
+
+
+## Update Customer Opt-in
+def update_customer_optin(from_number, customer_name):
+    """
+    Update customer opt-in status if customer exists
+    """
+    try:
+        if not customer_name:
+            # Customer doesn't exist yet, opt-in will be in WhatsApp Message only
+            wa_log("Opt-In - No Customer", f"Phone {from_number} opted in but no customer linked yet")
+            return
+        
+        # Check if customer already opted in
+        current_optin = frappe.db.get_value("Customer", customer_name, "custom_opt_in")
+        
+        if not current_optin:
+            frappe.db.set_value(
+                "Customer",
+                customer_name,
+                "custom_opt_in",
+                1,
+                update_modified=False
+            )
+            frappe.db.commit()
+            
+            wa_log("Customer Opt-In Updated", f"Customer {customer_name} ({from_number}) opted in via WhatsApp")
+            
+            # Emit event for customer opt-in
+            emit_whatsapp_event("whatsapp_customer_optin", {
+                "customer": customer_name,
+                "phone": from_number,
+                "timestamp": datetime.now().isoformat()
+            })
+    
+    except Exception as e:
+        wa_log("Customer Opt-In Error", f"{e}\n{frappe.get_traceback()}")
+
+
 ## Save Message and Return Document Name
-def save_whatsapp_message(message, message_text, media_id="", public_file_url=None, customer=None, msg_id=None):
+def save_whatsapp_message(message, message_text, media_id="", public_file_url=None, customer=None, msg_id=None, is_optin=False):
     try:
         from_number = message.get("from")
         timestamp = datetime.fromtimestamp(
@@ -297,11 +356,12 @@ def save_whatsapp_message(message, message_text, media_id="", public_file_url=No
             "custom_status": "Incoming",
             "message_id": msg_id,
             "message_status": "received",
+            "custom_opt_in": 1 if is_optin else 0  # Set opt-in checkbox if it's opt-in message
         })
         doc.insert(ignore_permissions=True)
         frappe.db.commit()
         
-        wa_log("Message Saved", f"{doc.name} from {from_number}")
+        wa_log("Message Saved", f"{doc.name} from {from_number} (Opt-in: {is_optin})")
 
         return doc.name
 
@@ -331,35 +391,12 @@ def find_customer_by_whatsapp(number):
     return None
 
 
-## Opt-In Check and Update
-def check_and_update_opt_in(number, text):
-    if not number or not text:
-        return
-
-    normalized = normalize_text(text)
-
-    optin_phrase = "i want to receive exclusive deals and order updates from autozone professional limited"
-
-    if optin_phrase not in normalized:
-        return
-
-    cust = find_customer_by_whatsapp(number)
-
-    if cust and not frappe.get_value("Customer", cust, "custom_opt_in"):
-        frappe.db.set_value(
-            "Customer",
-            cust,
-            "custom_opt_in",
-            1,
-            update_modified=False
-        )
-        frappe.db.commit()
-        
-        wa_log("Opt-In Updated", f"Customer {cust} opted in via WhatsApp")
-
-
 ## Link Whatsapp Messages to Customer on Customer Save
 def link_whatsapp_messages_to_customer(doc, method=None):
+    """
+    Hook: Called when Customer is saved
+    Links WhatsApp messages to customer and checks for opt-in in message history
+    """
     if not doc.whatsapp_number:
         return
 
@@ -377,10 +414,14 @@ def link_whatsapp_messages_to_customer(doc, method=None):
             filters={
                 "from_number": ["in", list(patterns)]
             },
-            fields=["name", "message"]
+            fields=["name", "message", "custom_opt_in"]
         )
 
+        # Track if customer should be opted in
+        should_opt_in = False
+
         for msg in messages:
+            # Link customer to message
             frappe.db.set_value(
                 "Whatsapp Message",
                 msg.name,
@@ -389,15 +430,24 @@ def link_whatsapp_messages_to_customer(doc, method=None):
                 update_modified=False
             )
 
-            if not doc.custom_opt_in:
-                if "exclusive deals" in normalize_text(msg.message):
-                    frappe.db.set_value(
-                        "Customer",
-                        doc.name,
-                        "custom_opt_in",
-                        1,
-                        update_modified=False
-                    )
+            # Check if any message has opt-in checked
+            if msg.get("custom_opt_in"):
+                should_opt_in = True
+            
+            # Also check message text for opt-in phrase (legacy messages)
+            if not should_opt_in and "exclusive deals" in normalize_text(msg.get("message", "")):
+                should_opt_in = True
+
+        # Update customer opt-in if needed
+        if should_opt_in and not doc.custom_opt_in:
+            frappe.db.set_value(
+                "Customer",
+                doc.name,
+                "custom_opt_in",
+                1,
+                update_modified=False
+            )
+            wa_log("Customer Opt-In Set", f"Customer {doc.name} opted in based on message history")
 
         frappe.db.commit()
         
@@ -406,30 +456,9 @@ def link_whatsapp_messages_to_customer(doc, method=None):
             emit_whatsapp_event("whatsapp_customer_linked", {
                 "customer": doc.name,
                 "whatsapp_number": doc.whatsapp_number,
-                "linked_messages": len(messages)
+                "linked_messages": len(messages),
+                "opted_in": should_opt_in
             })
 
     except Exception:
         wa_log("Customer Link Error", frappe.get_traceback())
-
-
-## Manual Real-time Trigger (for testing)
-@frappe.whitelist()
-def trigger_realtime_test(contact_number, message_text="Test message"):
-    """
-    Manually trigger a real-time event for testing
-    """
-    try:
-        emit_whatsapp_event("whatsapp_new_message", {
-            "contact_number": contact_number,
-            "message_name": f"test_{datetime.now().timestamp()}",
-            "message_id": f"test_{datetime.now().timestamp()}",
-            "message_type": "incoming",
-            "message_text": message_text,
-            "timestamp": datetime.now().isoformat(),
-            "action": "test_event"
-        })
-        
-        return {"success": True, "message": "Test event triggered"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}

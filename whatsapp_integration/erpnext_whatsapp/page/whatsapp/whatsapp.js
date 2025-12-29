@@ -494,51 +494,6 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                     max-width: 250px;
                 }
             }
-            /* Connection status indicator */
-            .connection-status {
-                position: fixed;
-                bottom: 10px;
-                right: 10px;
-                padding: 8px 12px;
-                border-radius: 20px;
-                font-size: 12px;
-                font-weight: 500;
-                z-index: 10000;
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                transition: all 0.3s ease;
-            }
-            .connection-status.connected {
-                background: rgba(37, 211, 102, 0.1);
-                color: #25d366;
-                border: 1px solid rgba(37, 211, 102, 0.3);
-            }
-            .connection-status.disconnected {
-                background: rgba(255, 59, 48, 0.1);
-                color: #ff3b30;
-                border: 1px solid rgba(255, 59, 48, 0.3);
-            }
-            .connection-status.connecting {
-                background: rgba(255, 204, 0, 0.1);
-                color: #ffcc00;
-                border: 1px solid rgba(255, 204, 0, 0.3);
-            }
-            .status-dot {
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                display: inline-block;
-            }
-            .status-dot.connected { background: #25d366; }
-            .status-dot.disconnected { background: #ff3b30; }
-            .status-dot.connecting { background: #ffcc00; animation: pulse 1.5s infinite; }
-            
-            @keyframes pulse {
-                0% { opacity: 1; }
-                50% { opacity: 0.5; }
-                100% { opacity: 1; }
-            }
         </style>
         <div class="wa-container">
             <div class="wa-sidebar">
@@ -593,11 +548,6 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             <span class="wa-lightbox-close" onclick="$('#wa-lightbox').fadeOut(200);">×</span>
             <img id="wa-lightbox-img" src="" alt="" />
         </div>
-        <!-- Connection Status Indicator -->
-        <div id="connection-status" class="connection-status connecting" style="display: none;">
-            <span class="status-dot connecting"></span>
-            <span class="status-text">Connecting...</span>
-        </div>
     `);
     
     let active_contact = null;
@@ -626,32 +576,32 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
     
     // =============== UTILITY FUNCTIONS ===============
     
-    function update_connection_status(status, message = '') {
-        connection_status = status;
-        const $status = $('#connection-status');
-        const $dot = $status.find('.status-dot');
-        const $text = $status.find('.status-text');
+    // function update_connection_status(status, message = '') {
+    //     connection_status = status;
+    //     const $status = $('#connection-status');
+    //     const $dot = $status.find('.status-dot');
+    //     const $text = $status.find('.status-text');
         
-        $status.removeClass('connected disconnected connecting').addClass(status);
-        $dot.removeClass('connected disconnected connecting').addClass(status);
+    //     $status.removeClass('connected disconnected connecting').addClass(status);
+    //     $dot.removeClass('connected disconnected connecting').addClass(status);
         
-        switch(status) {
-            case 'connected':
-                $text.text(message || 'Connected');
-                $status.fadeIn();
-                break;
-            case 'disconnected':
-                $text.text(message || 'Disconnected');
-                $status.fadeIn();
-                break;
-            case 'connecting':
-                $text.text(message || 'Connecting...');
-                $status.fadeIn();
-                break;
-        }
+    //     switch(status) {
+    //         case 'connected':
+    //             $text.text(message || 'Connected');
+    //             $status.fadeIn();
+    //             break;
+    //         case 'disconnected':
+    //             $text.text(message || 'Disconnected');
+    //             $status.fadeIn();
+    //             break;
+    //         case 'connecting':
+    //             $text.text(message || 'Connecting...');
+    //             $status.fadeIn();
+    //             break;
+    //     }
         
-        console.log(`Connection status: ${status} - ${message}`);
-    }
+    //     console.log(`Connection status: ${status} - ${message}`);
+    // }
     
     // WhatsApp tick logic
     function get_whatsapp_ticks(status, is_read, message_status) {
@@ -738,7 +688,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         }
         return `+${clean}`;
     }
-    
+
     function render_media_content(message) {
         const type = message.message_type;
         const file_url = message.custom_document;
@@ -748,17 +698,97 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             return `<div class="wa-message-text">${frappe.utils.escape_html(message_text||'').replace(/\n/g,"<br>")}</div>`;
         }
         
+        // Check if it's a PDF file (applies to all message types)
+        const isPDFFile = file_url.toLowerCase().endsWith('.pdf');
+        
+        // For PDF files, use the same preview regardless of message type
+        if (isPDFFile) {
+            const filename = file_url.split('/').pop();
+            const safeFileUrl = frappe.utils.escape_html(file_url);
+            const safeFilename = frappe.utils.escape_html(filename);
+            
+            // PDF icon SVG (red)
+            const pdfIconSvg = `
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="48" height="48" rx="8" fill="#DC2626"/>
+                    <path d="M14 8C12.8954 8 12 8.89543 12 10V38C12 39.1046 12.8954 40 14 40H34C35.1046 40 36 39.1046 36 38V16L28 8H14Z" fill="#EF4444"/>
+                    <path d="M28 8V14C28 15.1046 28.8954 16 30 16H36L28 8Z" fill="#FCA5A5"/>
+                    <text x="24" y="30" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white" text-anchor="middle">PDF</text>
+                </svg>
+            `;
+            
+            // Determine the caption text (remove file prefix from message text if present)
+            let captionText = '';
+            if (message_text && !message_text.startsWith('Document: ') && !message_text.startsWith('PDF: ')) {
+                captionText = `<div class="wa-message-text" style="margin-top: 8px;">${frappe.utils.escape_html(message_text).replace(/\n/g,"<br>")}</div>`;
+            }
+            
+            return `
+                <div style="width: 100%;">
+                    <div class="wa-document-preview" style="max-width: 100%; margin-bottom: 8px;">
+                        <div class="wa-doc-icon" style="background: transparent; display: flex; align-items: center; justify-content: center;">
+                            ${pdfIconSvg}
+                        </div>
+                        <div class="wa-doc-info">
+                            <div class="wa-doc-name">${safeFilename}</div>
+                            <div class="wa-doc-meta">
+                                <a href="${safeFileUrl}" target="_blank" download="${safeFilename}" class="wa-download-link">📥 Click to download</a>
+                            </div>
+                        </div>
+                    </div>
+                    ${captionText}
+                </div>
+            `;
+        }
+        
+        // Non-PDF files continue with original logic
         switch(type) {
             case 'image':
                 const safeImageUrl = frappe.utils.escape_html(file_url);
                 return `<div class="wa-media-container"><img src="${safeImageUrl}" alt="Image" onload="if(window.scrollAfterLoad) window.scrollAfterLoad()" onclick="open_lightbox('${safeImageUrl}', 'image')" />${message_text && !message_text.startsWith('Image:') ? `<div class="wa-media-caption">${frappe.utils.escape_html(message_text).replace(/\n/g,"<br>")}</div>` : ''}</div>`;
             
-            case 'document':
-                const filename = message_text ? message_text.replace('Document: ', '').split(' – ')[0] : 'Document';
-                const file_ext = filename.split('.').pop().toUpperCase();
+            case 'template':
+                // Template without PDF (non-PDF file)
+                const filename = file_url.split('/').pop();
+                const file_ext = filename.split('.').pop().toUpperCase().substring(0, 3);
                 const safeFileUrl = frappe.utils.escape_html(file_url);
                 const safeFilename = frappe.utils.escape_html(filename);
-                return `<div class="wa-document-preview"><div class="wa-doc-icon">${file_ext}</div><div class="wa-doc-info"><div class="wa-doc-name">${safeFilename}</div><div class="wa-doc-meta"><a href="${safeFileUrl}" target="_blank" download="${safeFilename}" class="wa-download-link">📥 Click to download</a></div></div></div>`;
+                
+                return `
+                    <div style="width: 100%;">
+                        <div class="wa-document-preview" style="max-width: 100%; margin-bottom: 8px;">
+                            <div class="wa-doc-icon">
+                                ${file_ext}
+                            </div>
+                            <div class="wa-doc-info">
+                                <div class="wa-doc-name">${safeFilename}</div>
+                                <div class="wa-doc-meta">
+                                    <a href="${safeFileUrl}" target="_blank" download="${safeFilename}" class="wa-download-link">📥 Click to download</a>
+                                </div>
+                            </div>
+                        </div>
+                        ${message_text ? `<div class="wa-message-text" style="margin-top: 8px;">${frappe.utils.escape_html(message_text).replace(/\n/g,"<br>")}</div>` : ''}
+                    </div>
+                `;
+            
+            case 'document':
+                // Non-PDF document
+                const docFilename = message_text ? message_text.replace('Document: ', '').split(' – ')[0] : file_url.split('/').pop();
+                const docFileExt = docFilename.split('.').pop().toUpperCase();
+                const docSafeFileUrl = frappe.utils.escape_html(file_url);
+                const docSafeFilename = frappe.utils.escape_html(docFilename);
+                
+                return `
+                    <div class="wa-document-preview">
+                        <div class="wa-doc-icon">${docFileExt}</div>
+                        <div class="wa-doc-info">
+                            <div class="wa-doc-name">${docSafeFilename}</div>
+                            <div class="wa-doc-meta">
+                                <a href="${docSafeFileUrl}" target="_blank" download="${docSafeFilename}" class="wa-download-link">📥 Click to download</a>
+                            </div>
+                        </div>
+                    </div>
+                `;
             
             case 'video':
                 const safeVideoUrl = frappe.utils.escape_html(file_url);
@@ -780,7 +810,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         user_at_bottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
     }
     
-    // =============== CHAT FUNCTIONS ===============
+    // Chat Functions
     
     function init_emoji_picker() {
         const emojiPicker = $('#wa-emoji-picker');
