@@ -154,30 +154,6 @@ doctype_js = {
 # Document Events
 # ---------------
 # Hook on document methods and events
-# doc_events = {
-#     "Sales Order": {
-#         "on_submit": [
-#             "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_order_confirmation",
-           
-#             # "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_delivery_location",
-#         ],
-#     },
-#     "Delivery Note": {
-#         "on_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_delivery_notification",
-#     },
-#     "Sales Invoice": {
-#         "on_submit": [
-#             "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_invoice_notification",
-#             "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_invoice_document",
-#             "whatsapp_integration.erpnext_whatsapp.custom_scripts.upload_media_whatsapp_cloud.send_proforma_whatsapp"
-#             ]
-
-#     },
-#     "Payment Entry":{
-#         "on_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_payment_notification"
-#     }
-# }
-
 doc_events = {
     "Sales Order": {
         "on_submit": [
