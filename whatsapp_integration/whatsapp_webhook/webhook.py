@@ -208,36 +208,56 @@ def handle_single_message(message):
         msg_type = message.get("type")
         from_number = message.get("from")
         msg_id = message.get("id")
+
         message_text = ""
         media_id = ""
         public_file_url = None
+        button_payload = None
+
+        # =========================
+        # MESSAGE TYPE HANDLING
+        # =========================
 
         if msg_type == "text":
             message_text = message.get("text", {}).get("body", "")
+
+        elif msg_type == "button":
+            button_payload = message.get("button", {}).get("payload")
+            button_text = message.get("button", {}).get("text")
+
+            # Prefer payload, fallback to text
+            message_text = button_payload or button_text or "Button clicked"
+
         elif msg_type == "image":
-            message_text = "Image received"
-            media_id = message.get("image", {}).get("id", "")
+            message_text = "📷 Image received"
+            media_id = message.get("image", {}).get("id")
+
         elif msg_type == "video":
-            message_text = "Video received"
-            media_id = message.get("video", {}).get("id", "")
+            message_text = "🎥 Video received"
+            media_id = message.get("video", {}).get("id")
+
         elif msg_type == "audio":
-            message_text = "Audio received"
-            media_id = message.get("audio", {}).get("id", "")
+            message_text = "🎵 Audio received"
+            media_id = message.get("audio", {}).get("id")
+
         elif msg_type == "document":
-            message_text = message.get("document", {}).get("filename", "Document received")
-            media_id = message.get("document", {}).get("id", "")
+            message_text = message.get("document", {}).get("filename", "📄 Document received")
+            media_id = message.get("document", {}).get("id")
+
         elif msg_type == "sticker":
-            message_text = "Sticker received"
-            media_id = message.get("sticker", {}).get("id", "")
+            message_text = "😀 Sticker received"
+            media_id = message.get("sticker", {}).get("id")
+
         else:
             message_text = f"Received {msg_type}"
 
+        # Customer Look-up
         customer = find_customer_by_whatsapp(from_number)
 
-        # Check for opt-in message BEFORE saving
+        # Check for Opt In
         is_optin_message = check_for_optin_message(message_text)
 
-        # Save message and get the document name
+        # Save Message
         doc_name = save_whatsapp_message(
             message=message,
             message_text=message_text,
@@ -245,14 +265,14 @@ def handle_single_message(message):
             public_file_url=public_file_url,
             customer=customer,
             msg_id=msg_id,
-            is_optin=is_optin_message  # Pass opt-in status
+            is_optin=is_optin_message
         )
 
-        # Update customer opt-in if this is an opt-in message
+        # Update Customer Opt-in 
         if is_optin_message:
             update_customer_optin(from_number, customer)
 
-        #  EMIT REAL-TIME NEW MESSAGE EVENT
+        # Real-time Event Emission
         if doc_name:
             emit_whatsapp_event("whatsapp_new_message", {
                 "contact_number": from_number,
@@ -260,21 +280,18 @@ def handle_single_message(message):
                 "message_id": msg_id,
                 "message_type": "incoming",
                 "whatsapp_type": msg_type,
-                "message_text": message_text[:100],  # First 100 chars
+                "message_text": message_text,
+                "button_payload": button_payload,  # Button payload if applicable
                 "customer": customer,
                 "is_optin": is_optin_message,
-                "timestamp": datetime.now().isoformat(),
-                "action": "new_incoming_message"
+                "timestamp": datetime.now().isoformat()
             })
-            
-            # Also emit generic doc_update for compatibility
+
             frappe.publish_realtime(
                 event="doc_update",
                 message={
                     "doctype": "Whatsapp Message",
                     "name": doc_name,
-                    "from_number": from_number,
-                    "customer": customer,
                     "action": "create"
                 },
                 user=None,

@@ -1,0 +1,76 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"t3pWQPnDQP\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Whatsapp Integration</span>\",\"col\":12}},{\"id\":\"qpXb4ep2oF\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Whatsapp Settings\",\"col\":3}},{\"id\":\"jo3tYke_qk\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Message Templates\",\"col\":3}},{\"id\":\"7aK3O47XU_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Whatsapp Chats\",\"col\":3}},{\"id\":\"1ykk_FRxDu\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Messages Logs\",\"col\":3}},{\"id\":\"bBePbHDWbV\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"fui6-0Jk1Y\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"KVdR5ZgzVg\",\"type\":\"paragraph\",\"data\":{\"text\":\"Whatsapp Cloud API Payloads (Including Webhooks)\",\"col\":12}},{\"id\":\"mB6JZIZhuI\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"WABA Payloads\",\"col\":3}},{\"id\":\"CWJOs_k_rJ\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Whatsapp Message\",\"col\":3}}]",
+ "creation": "2025-12-29 12:14:05.086888",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "solid-success",
+ "idx": 0,
+ "indicator_color": "",
+ "is_hidden": 0,
+ "label": "Whatsapp Integration",
+ "links": [],
+ "modified": "2025-12-30 16:15:38.852181",
+ "modified_by": "Administrator",
+ "module": "ERPNext Whatsapp",
+ "name": "Whatsapp Integration",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 1.0,
+ "shortcuts": [
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Whatsapp Message",
+   "link_to": "Whatsapp Message",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Whatsapp Settings",
+   "link_to": "Whatsapp Setting",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Whatsapp Chats",
+   "link_to": "whatsapp",
+   "type": "Page"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Messages Logs",
+   "link_to": "Whatsapp Message",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Message Templates",
+   "link_to": "Whatsapp Message Template",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Yellow",
+   "doc_view": "List",
+   "label": "WABA Payloads",
+   "link_to": "Whatsapp Cloud API Payload",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Whatsapp Integration"
+}
