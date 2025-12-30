@@ -5,9 +5,10 @@ import re
 import os
 from frappe import _
 
-### Send Whatsapp Message Template for Payment Entries
+
 @frappe.whitelist()
 def send_whatsapp_template_message(phone, template_name, parameters=None, customer=None, document_url=None):
+
     # Load WhatsApp settings
     settings = frappe.get_single("Whatsapp Setting")
     ACCESS_TOKEN = settings.get_password("access_token") or settings.get("access_token")
@@ -60,11 +61,6 @@ def send_whatsapp_template_message(phone, template_name, parameters=None, custom
         media_id = None
         
         try:
-            # Get WhatsApp settings
-            settings = frappe.get_single("Whatsapp Setting")
-            ACCESS_TOKEN = settings.get_password("access_token") or settings.get("access_token")
-            PHONE_NUMBER_ID = settings.get("phone_number_id")
-            
             # Get file from server
             file_doc = frappe.get_doc("File", {"file_url": document_url})
             file_path = frappe.get_site_path("public", file_doc.file_url.lstrip("/"))
@@ -115,7 +111,7 @@ def send_whatsapp_template_message(phone, template_name, parameters=None, custom
                         "type": format_map[header_type],
                         format_map[header_type]: {
                             "id": media_id,
-                            "filename": display_filename  # Add filename for proper display
+                            "filename": display_filename
                         }
                     }
                 ]
@@ -202,7 +198,7 @@ def send_whatsapp_template_message(phone, template_name, parameters=None, custom
             # Create log entry with document if it's a template with header
             log_data = {
                 "doctype": "Whatsapp Message",
-                "from_number": phone,  # Customer's phone number, not business phone ID
+                "from_number": phone,
                 "message_type": "template",
                 "custom_status": "Outgoing",
                 "message": message_text,
@@ -231,24 +227,24 @@ def send_whatsapp_template_message(phone, template_name, parameters=None, custom
         return {"success": False, "error": str(e)}
 
 
-def send_payment_whatsapp_async(doc_name):
+def send_sales_order_whatsapp_async(doc_name):
     """
-    Background job to send WhatsApp message for payment entry
+    Background job to send WhatsApp message for sales order
     This runs asynchronously and doesn't block the submission
     """
     try:
-        doc = frappe.get_doc("Payment Entry", doc_name)
+        doc = frappe.get_doc("Sales Order", doc_name)
         
         # Get customer's phone number
-        customer = frappe.get_doc("Customer", doc.party)
+        customer = frappe.get_doc("Customer", doc.customer)
         phone = customer.whatsapp_number
         
         if not phone:
-            frappe.log_error(f"No WhatsApp number found for {customer.customer_name}", "Payment Entry WhatsApp")
+            frappe.log_error(f"No WhatsApp number found for {customer.customer_name}", "Sales Order WhatsApp")
             return
         
-        # Get template name
-        template_name = "payment_confirmations"
+        # Template name for sales orders
+        template_name = "order_confirmationzz"
         
         # Check if template exists and is approved
         template_exists = frappe.db.exists("Whatsapp Message Template", {
@@ -257,35 +253,30 @@ def send_payment_whatsapp_async(doc_name):
         })
         
         if not template_exists:
-            frappe.log_error(f"Template '{template_name}' not found or not approved", "Payment Entry WhatsApp")
+            frappe.log_error(f"Template '{template_name}' not found or not approved", "Sales Order WhatsApp")
             return
         
-        # Prepare parameters
-        reference_text = doc.name
-        if doc.references and len(doc.references) > 0:
-            reference_text = doc.references[0].reference_name
-        
-        amount_str = doc.get_formatted("paid_amount")
-        
+        # Prepare parameters based on your template
+        # Template body: "Hi {{name}}, Your order has been successfully placed... Your order number is {{text}}."
         parameters = {
-            "amount": amount_str,
-            "text": reference_text
+            "name": customer.customer_name,
+            "text": doc.name  # Sales Order number
         }
         
-        # Generate PDF from Payment Entry and save it as a public file
+        # Generate PDF from Sales Order and save it as a public file
         document_url = None
         
         try:
             # Get PDF content using default print format
             pdf_content = frappe.get_print(
-                doctype="Payment Entry",
+                doctype="Sales Order",
                 name=doc.name,
                 as_pdf=True,
                 letterhead=doc.letter_head
             )
             
             # Save PDF as a public file with proper naming
-            filename = f"Payment-{doc.name}.pdf"
+            filename = f"SalesOrder_{doc.name}.pdf"
             
             file_doc = frappe.get_doc({
                 "doctype": "File",
@@ -293,7 +284,7 @@ def send_payment_whatsapp_async(doc_name):
                 "folder": "Home",
                 "is_private": 0,
                 "content": pdf_content,
-                "attached_to_doctype": "Payment Entry",
+                "attached_to_doctype": "Sales Order",
                 "attached_to_name": doc.name
             })
             file_doc.insert(ignore_permissions=True)
@@ -302,7 +293,7 @@ def send_payment_whatsapp_async(doc_name):
             document_url = file_doc.file_url
             
         except Exception as e:
-            frappe.log_error(f"Failed to generate PDF: {str(e)}", "Payment Entry PDF Generation")
+            frappe.log_error(f"Failed to generate PDF: {str(e)}", "Sales Order PDF Generation")
             # Continue without PDF
         
         # Send WhatsApp message
@@ -310,26 +301,23 @@ def send_payment_whatsapp_async(doc_name):
             phone=phone,
             template_name=template_name,
             parameters=parameters,
-            customer=doc.party,
+            customer=doc.customer,
             document_url=document_url
         )
         
         if result.get("success"):
-            frappe.log_error(f"WhatsApp payment confirmation sent successfully to {customer.customer_name} for {doc.name}", "Payment Entry WhatsApp Success")
+            frappe.log_error(f"WhatsApp order confirmation sent successfully to {customer.customer_name} for {doc.name}", "Sales Order WhatsApp Success")
         else:
-            frappe.log_error(f"Failed to send WhatsApp: {result.get('error')}", "Payment Entry WhatsApp")
+            frappe.log_error(f"Failed to send WhatsApp: {result.get('error')}", "Sales Order WhatsApp")
             
     except Exception as e:
-        frappe.log_error(f"WhatsApp Send Failed: {str(e)}", "Payment Entry WhatsApp")
+        frappe.log_error(f"WhatsApp Send Failed: {str(e)}", "Sales Order WhatsApp")
 
 
-def on_payment_entry_submit(doc, method):
-    # Only send for customer payments
-    if doc.party_type != "Customer":
-        return
-    
-    # Quick validation before enqueuing
-    customer = frappe.get_doc("Customer", doc.party)
+def on_sales_order_submit(doc, method):
+
+    # Get customer's phone number
+    customer = frappe.get_doc("Customer", doc.customer)
     phone = customer.whatsapp_number
     
     if not phone:
@@ -342,13 +330,13 @@ def on_payment_entry_submit(doc, method):
     
     # Check if template exists
     template_exists = frappe.db.exists("Whatsapp Message Template", {
-        "template_name": "payment_confirmations",
+        "template_name": "order_confirmationzz",
         "status": "Approved"
     })
     
     if not template_exists:
         frappe.msgprint(
-            _("WhatsApp template 'payment_confirmations' not found or not approved. Message will not be sent."),
+            _("WhatsApp template 'order_confirmations' not found or not approved. Message will not be sent."),
             indicator="orange",
             alert=True
         )
@@ -356,7 +344,7 @@ def on_payment_entry_submit(doc, method):
     
     # Enqueue the job to run in background
     frappe.enqueue(
-        send_payment_whatsapp_async,
+        send_sales_order_whatsapp_async,
         doc_name=doc.name,
         queue='default',
         timeout=300,
@@ -365,7 +353,7 @@ def on_payment_entry_submit(doc, method):
     )
     
     frappe.msgprint(
-        _("Payment Entry submitted. WhatsApp message will be sent shortly."),
+        _("Sales Order submitted. WhatsApp message will be sent shortly."),
         indicator="blue",
         alert=True
     )
