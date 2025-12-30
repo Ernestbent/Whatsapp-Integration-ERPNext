@@ -10,7 +10,8 @@
   "column_break_bnaw",
   "business_account_id",
   "webhook_verify_token",
-  "app_id"
+  "app_id",
+  "app_version"
  ],
  "fields": [
   {
@@ -42,13 +43,18 @@
    "fieldname": "app_id",
    "fieldtype": "Data",
    "label": "App ID"
+  },
+  {
+   "fieldname": "app_version",
+   "fieldtype": "Data",
+   "label": "App Version"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-12-22 16:26:33.957939",
+ "modified": "2025-12-30 16:28:16.764720",
  "modified_by": "Administrator",
  "module": "ERPNext Whatsapp",
  "name": "Whatsapp Setting",
