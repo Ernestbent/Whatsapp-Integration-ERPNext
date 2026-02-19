@@ -92,7 +92,7 @@ def send_proforma_document(docname):
     headers = {"Authorization": f"Bearer {WHATSAPP_TOKEN}"}
     files = {
         "file": (filename, pdf_bytes, "application/pdf"),
-        "type": (None, "document"),  # Correct type for document
+        "type": (None, "document"),
         "messaging_product": (None, "whatsapp")
     }
 
@@ -130,7 +130,7 @@ def send_proforma_document(docname):
         "document": {
             "id": media_id,
             "filename": filename,
-            "caption": f"Sales Invoice / Proforma\nInvoice No: {doc.name}\nFrom: {doc.company}"
+            "caption": f"Sales Invoice\nInvoice No: {doc.name}\nFrom: {doc.company}"
         }
     }
 
@@ -140,7 +140,6 @@ def send_proforma_document(docname):
         response_data = msg_resp.json()
         whatsapp_msg_id = response_data.get("messages", [{}])[0].get("id", "")
 
-        # Success: Log and add comment
         log_whatsapp_message(
             from_number=to_whatsapp,
             message_type="document",
@@ -174,7 +173,7 @@ def send_proforma_document(docname):
 
 def log_whatsapp_message(from_number, message_type, message, media_id, customer, message_status, whatsapp_message_id, file_url=None):
     """
-    Log outgoing WhatsApp message to Whatsapp Message doctype
+    Log outgoing WhatsApp message to Whatsapp Message doctype.
     """
     try:
         current_time = datetime.now().strftime("%H:%M:%S")
@@ -208,27 +207,51 @@ def log_whatsapp_message(from_number, message_type, message, media_id, customer,
         frappe.log_error(f"Failed to log WhatsApp message: {str(e)}", "WhatsApp Message Log Error")
 
 
-# Background job hooks
-def send_proforma_background(doc, method):
+# ──────────────────────────────────────────────
+# Hook + Whitelisted API Entry Point
+# ──────────────────────────────────────────────
+
+@frappe.whitelist()
+def send_proforma_background(doc=None, method=None, sales_invoice=None):
     """
-    Hook: on_submit of Sales Invoice → enqueue WhatsApp send
+    Works both as a document event hook and as a direct API call from client.
+
+    As a hook  → called with (doc, method) by Frappe on Sales Invoice on_submit
+    As an API  → called with sales_invoice=<invoice name> from JS button
     """
-    if not doc.customer:
-        frappe.msgprint("Customer not set. Cannot send WhatsApp message.", indicator="red")
+    # Called from client with invoice name string
+    if sales_invoice and not doc:
+        docname = sales_invoice
+    # doc passed as a plain string (edge case)
+    elif doc and isinstance(doc, str):
+        docname = doc
+    # doc passed as a real Frappe document object from hook
+    elif doc and hasattr(doc, 'name'):
+        docname = doc.name
+    else:
+        frappe.throw("No Sales Invoice provided.")
         return
+
+    # Validate the invoice and customer before enqueuing
+    invoice_doc = frappe.get_doc("Sales Invoice", docname)
+    if not invoice_doc.customer:
+        frappe.msgprint("Customer not set. Cannot send WhatsApp message.", indicator="red")
+        return {"success": False, "error": "Customer not set"}
 
     frappe.enqueue(
         "whatsapp_integration.erpnext_whatsapp.custom_scripts.upload_media_whatsapp_cloud.send_proforma_background_job",
-        docname=doc.name,
+        docname=docname,
         queue="long",
         timeout=600,
         enqueue_after_commit=True
     )
 
+    return {"success": True, "message": f"WhatsApp invoice document send enqueued for {docname}"}
+
 
 def send_proforma_background_job(docname):
     """
-    Background job wrapper
+    Background job wrapper — called by the queue worker.
     """
     try:
         send_proforma_document(docname)

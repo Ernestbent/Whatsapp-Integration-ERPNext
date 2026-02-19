@@ -13,8 +13,8 @@
  "is_hidden": 0,
  "label": "Whatsapp Integration",
  "links": [],
- "modified": "2025-12-30 16:15:38.852181",
- "modified_by": "Administrator",
+ "modified": "2026-02-05 12:02:37.812320",
+ "modified_by": "ernestben69@gmail.com",
  "module": "ERPNext Whatsapp",
  "name": "Whatsapp Integration",
  "number_cards": [],
@@ -23,7 +23,7 @@
  "public": 1,
  "quick_lists": [],
  "roles": [],
- "sequence_id": 1.0,
+ "sequence_id": 2.0,
  "shortcuts": [
   {
    "color": "Green",

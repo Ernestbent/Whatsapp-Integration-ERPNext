@@ -44,8 +44,14 @@ def get_customer_phone(customer_name):
         return None
 
 
-# Notification functions
-def send_order_confirmation(doc, method):
+# ──────────────────────────────────────────────
+# Notification Functions
+# ──────────────────────────────────────────────
+
+def send_order_confirmation(doc, method=None):
+    """
+    Hook: Sales Order on_submit
+    """
     phone = get_customer_phone(doc.customer)
     if not phone:
         return
@@ -72,10 +78,28 @@ def send_order_confirmation(doc, method):
     doc.add_comment("Comment", f"WhatsApp order confirmation enqueued for {doc.name}")
 
 
-def send_invoice_notification(doc, method):
+@frappe.whitelist()
+def send_invoice_notification(doc=None, method=None, sales_invoice=None):
+    """
+    Works both as a document event hook and as a direct API call from client.
+
+    As a hook    → called with (doc, method) by Frappe automatically
+    As an API    → called with sales_invoice=<invoice name> from JS
+    """
+    # Called directly from client with invoice name
+    if sales_invoice and not doc:
+        doc = frappe.get_doc("Sales Invoice", sales_invoice)
+    # doc passed as a string (edge case)
+    elif doc and isinstance(doc, str):
+        doc = frappe.get_doc("Sales Invoice", doc)
+
+    if not doc:
+        frappe.throw("No Sales Invoice provided.")
+
     phone = get_customer_phone(doc.customer)
     if not phone:
-        return
+        frappe.msgprint("Customer has no valid WhatsApp number", indicator="red")
+        return {"success": False, "error": "No valid WhatsApp number found"}
 
     message = (
         f"Hello 👋!\n\n"
@@ -97,9 +121,13 @@ def send_invoice_notification(doc, method):
         notification_type="invoice"
     )
     doc.add_comment("Comment", f"WhatsApp invoice notification enqueued for {doc.name}")
+    return {"success": True, "message": f"WhatsApp notification enqueued for {doc.name}"}
 
 
-def send_delivery_notification(doc, method):
+def send_delivery_notification(doc, method=None):
+    """
+    Hook: Delivery Note on_submit
+    """
     phone = get_customer_phone(doc.customer)
     if not phone:
         return
@@ -126,7 +154,10 @@ def send_delivery_notification(doc, method):
     doc.add_comment("Comment", f"WhatsApp delivery notification enqueued for {doc.name}")
 
 
-def send_delivery_location(doc, method):
+def send_delivery_location(doc, method=None):
+    """
+    Hook: Sends store location along with delivery notification
+    """
     phone = get_customer_phone(doc.customer)
     if not phone:
         return
@@ -152,7 +183,10 @@ def send_delivery_location(doc, method):
     doc.add_comment("Comment", f"WhatsApp delivery location message enqueued for {doc.name}")
 
 
-def send_payment_notification(doc, method):
+def send_payment_notification(doc, method=None):
+    """
+    Hook: Payment Entry on_submit
+    """
     customer_name = doc.party_name or doc.customer
     phone = get_customer_phone(customer_name)
     if not phone:
@@ -183,19 +217,38 @@ def send_payment_notification(doc, method):
     doc.add_comment("Comment", f"WhatsApp payment confirmation enqueued for {doc.name}")
 
 
+# ──────────────────────────────────────────────
+# Background Worker
+# ──────────────────────────────────────────────
+
 def send_notification_background(phone, message, customer_name, doc_name, notification_type):
     """
-    Background task to send WhatsApp notification
+    Background task to send WhatsApp notification via queue.
+    Logs errors to Frappe Error Log on failure.
     """
     try:
-        result = send_notification_message(to_number=phone, message_body=message, customer_name=customer_name)
+        result = send_notification_message(
+            to_number=phone,
+            message_body=message,
+            customer_name=customer_name
+        )
         if not result.get("success"):
             frappe.log_error(
                 title=f"WhatsApp {notification_type.title()} Notification Failed",
-                message=f"Doc: {doc_name}\nCustomer: {customer_name}\nPhone: {phone}\nError: {result.get('error')}"
+                message=(
+                    f"Doc: {doc_name}\n"
+                    f"Customer: {customer_name}\n"
+                    f"Phone: {phone}\n"
+                    f"Error: {result.get('error')}"
+                )
             )
     except Exception as e:
         frappe.log_error(
             title=f"WhatsApp {notification_type.title()} Notification Error",
-            message=f"Doc: {doc_name}\nCustomer: {customer_name}\nPhone: {phone}\nError: {str(e)}"
+            message=(
+                f"Doc: {doc_name}\n"
+                f"Customer: {customer_name}\n"
+                f"Phone: {phone}\n"
+                f"Error: {str(e)}"
+            )
         )
