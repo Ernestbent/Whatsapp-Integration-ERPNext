@@ -1,0 +1,205 @@
+[
+ {
+  "body_parameters": [
+   {
+    "example_value": "UGX 20,000.00",
+    "parameter_name": "amount",
+    "parent": "payment_confirmations",
+    "parentfield": "body_parameters",
+    "parenttype": "Whatsapp Message Template"
+   },
+   {
+    "example_value": "ACC-SINV-2025-02197",
+    "parameter_name": "text",
+    "parent": "payment_confirmations",
+    "parentfield": "body_parameters",
+    "parenttype": "Whatsapp Message Template"
+   }
+  ],
+  "body_text": "Your payment of {{amount}} for {{text}} has been processed successfully. \n\nWe appreciate your business.",
+  "category": "utility",
+  "docstatus": 0,
+  "doctype": "Whatsapp Message Template",
+  "footer_text": "Craftson Auto Parts",
+  "format": "documentation",
+  "id": "2005081560060314",
+  "language": "en_US",
+  "media_example": "/files/Autozone Pro - Benedict Ernest.pdf",
+  "modified": "2026-02-27 14:43:21.584178",
+  "name": "payment_confirmations",
+  "parameter_format": "named",
+  "status": "Approved",
+  "table_pkhd": [],
+  "template_name": "payment_confirmations",
+  "text": ""
+ },
+ {
+  "body_parameters": [
+   {
+    "example_value": "Othieno Benedict Ernest",
+    "parameter_name": "customer_name",
+    "parent": "payment_receipts",
+    "parentfield": "body_parameters",
+    "parenttype": "Whatsapp Message Template"
+   },
+   {
+    "example_value": "UGX 1,000,000",
+    "parameter_name": "amount",
+    "parent": "payment_receipts",
+    "parentfield": "body_parameters",
+    "parenttype": "Whatsapp Message Template"
+   },
+   {
+    "example_value": "ACC-SINV-2025-00060",
+    "parameter_name": "text",
+    "parent": "payment_receipts",
+    "parentfield": "body_parameters",
+    "parenttype": "Whatsapp Message Template"
+   }
+  ],
+  "body_text": "Hi {{customer_name}},\n\nWe have received your payment of {{amount}} for {{text}}. \n\nThank you for your payment.lets use this",
+  "category": "marketing",
+  "docstatus": 0,
+  "doctype": "Whatsapp Message Template",
+  "footer_text": "Craftson Auto Parts",
+  "format": "text",
+  "id": "1287570463409793",
+  "language": "en_US",
+  "media_example": "",
+  "modified": "2026-02-27 14:42:55.257621",
+  "name": "payment_receipts",
+  "parameter_format": "named",
+  "status": "Approved",
+  "table_pkhd": [],
+  "template_name": "payment_receipts",
+  "text": "Order Confirmation"
+ },
+ {
+  "body_parameters": [
+   {
+    "example_value": "Othieno Benedict",
+    "parameter_name": "name",
+    "parent": "order_confirmationzz",
+    "parentfield": "body_parameters",
+    "parenttype": "Whatsapp Message Template"
+   },
+   {
+    "example_value": "SAL-ORD-2025-02603",
+    "parameter_name": "text",
+    "parent": "order_confirmationzz",
+    "parentfield": "body_parameters",
+    "parenttype": "Whatsapp Message Template"
+   }
+  ],
+  "body_text": "Hi {{name}},\n\nThank you for your order! It has been successfully placed and is now being processed.\n\nYour order number is {{text}}.\n\nPlease reply with **Yes** if this matches what you ordered, or **No** if something is incorrect.",
+  "category": "utility",
+  "docstatus": 0,
+  "doctype": "Whatsapp Message Template",
+  "footer_text": "Craftson Auto Parts",
+  "format": "documentation",
+  "id": "741429919013086",
+  "language": "en_US",
+  "media_example": "/files/SalesOrder_SAL-ORD-2025-00070 (2).pdf",
+  "modified": "2026-02-27 14:42:48.483523",
+  "name": "order_confirmationzz",
+  "parameter_format": "named",
+  "status": "Approved",
+  "table_pkhd": [
+   {
+    "parent": "order_confirmationzz",
+    "parentfield": "table_pkhd",
+    "parenttype": "Whatsapp Message Template",
+    "phone_number": null,
+    "text": "Yes",
+    "type": "Quick Reply",
+    "url": null
+   },
+   {
+    "parent": "order_confirmationzz",
+    "parentfield": "table_pkhd",
+    "parenttype": "Whatsapp Message Template",
+    "phone_number": null,
+    "text": "No",
+    "type": "Quick Reply",
+    "url": null
+   }
+  ],
+  "template_name": "order_confirmationzz",
+  "text": ""
+ },
+ {
+  "body_parameters": [
+   {
+    "example_value": "MARK SHAMBA",
+    "parameter_name": "customer_name",
+    "parent": "delivery_update",
+    "parentfield": "body_parameters",
+    "parenttype": "Whatsapp Message Template"
+   },
+   {
+    "example_value": " MAT-DN-2025-00001 ",
+    "parameter_name": "delivery_note",
+    "parent": "delivery_update",
+    "parentfield": "body_parameters",
+    "parenttype": "Whatsapp Message Template"
+   },
+   {
+    "example_value": " 23-12-2025 ",
+    "parameter_name": "delivery_date",
+    "parent": "delivery_update",
+    "parentfield": "body_parameters",
+    "parenttype": "Whatsapp Message Template"
+   }
+  ],
+  "body_text": "Hi {{customer_name}}, your order {{delivery_note}} has been dispatched and is now on the way.\n\nEstimated delivery: {{delivery_date}}\n\nWe’ll notify you once the delivery is completed.\n",
+  "category": "utility",
+  "docstatus": 0,
+  "doctype": "Whatsapp Message Template",
+  "footer_text": "Craftson Auto Parts",
+  "format": "documentation",
+  "id": "1665634851081052",
+  "language": "en_US",
+  "media_example": "/files/Autozone Pro - MARK SHAMBA.pdf",
+  "modified": "2025-12-30 17:40:00.680132",
+  "name": "delivery_update",
+  "parameter_format": "named",
+  "status": "Pending",
+  "table_pkhd": [],
+  "template_name": "delivery_update",
+  "text": ""
+ },
+ {
+  "body_parameters": [
+   {
+    "example_value": "Othieno Benedict Ernest",
+    "parameter_name": "name",
+    "parent": "sales_invoice_template",
+    "parentfield": "body_parameters",
+    "parenttype": "Whatsapp Message Template"
+   },
+   {
+    "example_value": "ACC-SINV-2026-00106",
+    "parameter_name": "invoice_number",
+    "parent": "sales_invoice_template",
+    "parentfield": "body_parameters",
+    "parenttype": "Whatsapp Message Template"
+   }
+  ],
+  "body_text": "Hi {{name}} 😊\n\nThank you for your order! Your order has been successfully placed and is now being processed.\n\n🧾 *Invoice No:* {{invoice_number}}\n\nThank you for choosing us!",
+  "category": "utility",
+  "docstatus": 0,
+  "doctype": "Whatsapp Message Template",
+  "footer_text": "Autozone Professional Limited",
+  "format": "documentation",
+  "id": "1303540555236366",
+  "language": "en_US",
+  "media_example": "/files/A 02606978.pdf",
+  "modified": "2026-02-27 14:43:02.540168",
+  "name": "sales_invoice_template",
+  "parameter_format": "named",
+  "status": "Approved",
+  "table_pkhd": [],
+  "template_name": "sales_invoice_template",
+  "text": null
+ }
+]
