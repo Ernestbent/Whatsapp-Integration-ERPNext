@@ -287,7 +287,8 @@ doc_events = {
 
 
 fixtures = [
-    {"doctype": "Whatsapp Message Template"}
+    {"doctype": "Whatsapp Message Template"},
+    {"doctype": "Whatsapp Setting"}
 ]
 
 csrf_exempt = ["/api/method/whatsapp_integration.whatsapp_webhook.receive_whatsapp"]

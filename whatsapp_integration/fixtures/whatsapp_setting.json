@@ -1,0 +1,14 @@
+[
+ {
+  "access_token": "EAALiKy4ZAzYQBQEM5uJbZBTKrGNodwZAalXaZAsisKBTxj0QnfKnWu6Kwbb7UFyqDwzjk6rCDr2SZCqMuTO8Bv9orAMYkKOrBZC96zw78Ir9XK87tR3kgSCf5JddBgOxSmoT6KZAzGxG36zz23UpZCWMgGYQ5uaYc4EnYNjk2OT5ncMmeHIjZBj2pV5SUpWnS8tjURgZDZD",
+  "app_id": "811625038335364",
+  "app_version": "v24.0",
+  "business_account_id": "1742521526416071",
+  "docstatus": 0,
+  "doctype": "Whatsapp Setting",
+  "modified": "2025-12-30 16:28:28.813548",
+  "name": "Whatsapp Setting",
+  "phone_number_id": "889361844266486",
+  "webhook_verify_token": "vibecode"
+ }
+]
