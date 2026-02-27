@@ -169,14 +169,14 @@ doc_events = {
             "on_update_after_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.notifications_on_dispacth.send_dispatch_notification",
     }
     },
-    "Sales Invoice": {
-        "on_submit": [
-            "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_invoice_notification",
-            "whatsapp_integration.erpnext_whatsapp.custom_scripts.upload_media_whatsapp_cloud.send_proforma_background",
+    # "Sales Invoice": {
+    #     "on_submit": [
+    #         "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_invoice_notification",
+    #         "whatsapp_integration.erpnext_whatsapp.custom_scripts.upload_media_whatsapp_cloud.send_proforma_background",
             
             
-        ]
-    },
+    #     ]
+    # },
     "Delivery Note":{
         "on_submit": [
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_delivery_notification",
