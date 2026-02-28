@@ -1,23 +1,11 @@
 import frappe
 import json
 import hashlib
-import requests
 from werkzeug.wrappers import Response
 from datetime import datetime
 
 
-## Safe Logging
-def wa_log(title, message=""):
-    try:
-        frappe.log_error(
-            title=str(title)[:140],
-            message=str(message)[:3000] if message else "OK"
-        )
-    except:
-        pass
-
-
-## Text Normalization (Critical for Opt-in)
+## Text Normalization
 def normalize_text(text):
     if not text:
         return ""
@@ -40,7 +28,7 @@ def save_raw_payload(raw_json):
         }).insert(ignore_permissions=True)
         frappe.db.commit()
     except Exception as e:
-        wa_log("Payload Save Error", f"{e}\n{frappe.get_traceback()}")
+        frappe.log_error("Payload Save Error", f"{e}\n{frappe.get_traceback()}")
 
 
 ## Duplicate Webhook Detection
@@ -61,21 +49,15 @@ def is_duplicate_webhook(raw_data):
 
 ## Real-time Event Emitter
 def emit_whatsapp_event(event_type, data):
-    """
-    Emit real-time events to all connected clients
-    """
     try:
         frappe.publish_realtime(
             event=event_type,
             message=data,
-            user=None,  # Send to all users
-            after_commit=True  # Important: wait for transaction to complete
+            user=None,
+            after_commit=True
         )
-        
-        wa_log(f"Event Emitted: {event_type}", f"Data: {json.dumps(data)[:200]}")
-        
     except Exception as e:
-        wa_log("Event Emit Error", f"{e}\n{frappe.get_traceback()}")
+        frappe.log_error("Event Emit Error", f"{e}\n{frappe.get_traceback()}")
 
 
 ## Main Webhook Receiver
@@ -86,7 +68,7 @@ def receive_whatsapp():
             return handle_verification()
         return handle_webhook_data()
     except Exception:
-        wa_log("Webhook Crash", frappe.get_traceback())
+        frappe.log_error("Webhook Crash", frappe.get_traceback())
         return {"status": "error"}
 
 
@@ -113,7 +95,7 @@ def handle_webhook_data():
         payload = json.loads(raw)
         process_whatsapp_message(payload)
     except Exception as e:
-        wa_log("Processing Failed", f"{e}\n{frappe.get_traceback()}")
+        frappe.log_error("Processing Failed", f"{e}\n{frappe.get_traceback()}")
 
     return {"status": "received"}
 
@@ -134,7 +116,7 @@ def process_whatsapp_message(payload):
                 handle_single_message(message)
 
 
-## Message Status Handler with Real-time Events
+## Message Status Handler
 def handle_message_status(status):
     try:
         msg_id = status.get("id")
@@ -153,14 +135,8 @@ def handle_message_status(status):
         if not msg_name:
             return
 
-        # Get the contact number for this message
-        contact_number = frappe.db.get_value(
-            "Whatsapp Message",
-            msg_name,
-            "from_number"
-        )
+        contact_number = frappe.db.get_value("Whatsapp Message", msg_name, "from_number")
 
-        # Update status in database
         frappe.db.set_value(
             "Whatsapp Message",
             msg_name,
@@ -168,8 +144,7 @@ def handle_message_status(status):
             new_status,
             update_modified=False
         )
-        
-        # Also update the timestamp if available
+
         timestamp = status.get("timestamp")
         if timestamp:
             try:
@@ -183,10 +158,9 @@ def handle_message_status(status):
                 )
             except:
                 pass
-        
+
         frappe.db.commit()
 
-        #  EMIT REAL-TIME STATUS UPDATE EVENT
         emit_whatsapp_event("whatsapp_message_status_changed", {
             "message_name": msg_name,
             "message_id": msg_id,
@@ -196,13 +170,11 @@ def handle_message_status(status):
             "timestamp": datetime.now().isoformat()
         })
 
-        wa_log("Status Updated", f"{msg_name} -> {new_status} for {contact_number}")
-
     except Exception:
-        wa_log("Status Update Error", frappe.get_traceback())
+        frappe.log_error("Status Update Error", frappe.get_traceback())
 
 
-## Single Message Handler with Real-time Events
+## Single Message Handler
 def handle_single_message(message):
     try:
         msg_type = message.get("type")
@@ -214,18 +186,12 @@ def handle_single_message(message):
         public_file_url = None
         button_payload = None
 
-        # =========================
-        # MESSAGE TYPE HANDLING
-        # =========================
-
         if msg_type == "text":
             message_text = message.get("text", {}).get("body", "")
 
         elif msg_type == "button":
             button_payload = message.get("button", {}).get("payload")
             button_text = message.get("button", {}).get("text")
-
-            # Prefer payload, fallback to text
             message_text = button_payload or button_text or "Button clicked"
 
         elif msg_type == "image":
@@ -251,13 +217,9 @@ def handle_single_message(message):
         else:
             message_text = f"Received {msg_type}"
 
-        # Customer Look-up
         customer = find_customer_by_whatsapp(from_number)
-
-        # Check for Opt In
         is_optin_message = check_for_optin_message(message_text)
 
-        # Save Message
         doc_name = save_whatsapp_message(
             message=message,
             message_text=message_text,
@@ -268,11 +230,9 @@ def handle_single_message(message):
             is_optin=is_optin_message
         )
 
-        # Update Customer Opt-in 
         if is_optin_message:
             update_customer_optin(from_number, customer)
 
-        # Real-time Event Emission
         if doc_name:
             emit_whatsapp_event("whatsapp_new_message", {
                 "contact_number": from_number,
@@ -281,7 +241,7 @@ def handle_single_message(message):
                 "message_type": "incoming",
                 "whatsapp_type": msg_type,
                 "message_text": message_text,
-                "button_payload": button_payload,  # Button payload if applicable
+                "button_payload": button_payload,
                 "customer": customer,
                 "is_optin": is_optin_message,
                 "timestamp": datetime.now().isoformat()
@@ -299,59 +259,45 @@ def handle_single_message(message):
             )
 
     except Exception:
-        wa_log("Message Processing Error", frappe.get_traceback())
+        frappe.log_error("Message Processing Error", frappe.get_traceback())
 
 
 ## Check if message is opt-in
 def check_for_optin_message(text):
-    """
-    Check if message text contains the opt-in phrase
-    Returns True if it's an opt-in message
-    """
     if not text:
         return False
-    
     normalized = normalize_text(text)
-    optin_phrase = "i want to receive exclusive deals and order updates from autozone professional limited"
-    
+    optin_phrase = "i would like to receive exclusive deals and order updates from autozone professional limited"
     return optin_phrase in normalized
 
 
-## Update Customer Opt-in
+## Update Customer Opt-in (silent — does not touch modified timestamp)
 def update_customer_optin(from_number, customer_name):
-    """
-    Update customer opt-in status if customer exists
-    """
     try:
         if not customer_name:
-            # Customer doesn't exist yet, opt-in will be in WhatsApp Message only
-            wa_log("Opt-In - No Customer", f"Phone {from_number} opted in but no customer linked yet")
             return
-        
-        # Check if customer already opted in
+
+        if not frappe.db.exists("Customer", customer_name):
+            return
+
         current_optin = frappe.db.get_value("Customer", customer_name, "custom_opt_in")
-        
-        if not current_optin:
-            frappe.db.set_value(
-                "Customer",
-                customer_name,
-                "custom_opt_in",
-                1,
-                update_modified=False
-            )
-            frappe.db.commit()
-            
-            wa_log("Customer Opt-In Updated", f"Customer {customer_name} ({from_number}) opted in via WhatsApp")
-            
-            # Emit event for customer opt-in
-            emit_whatsapp_event("whatsapp_customer_optin", {
-                "customer": customer_name,
-                "phone": from_number,
-                "timestamp": datetime.now().isoformat()
-            })
-    
+        if current_optin:
+            return
+
+        frappe.db.sql(
+            "UPDATE `tabCustomer` SET `custom_opt_in` = 1 WHERE `name` = %s",
+            (customer_name,)
+        )
+        frappe.db.commit()
+
+        emit_whatsapp_event("whatsapp_customer_optin", {
+            "customer": customer_name,
+            "phone": from_number,
+            "timestamp": datetime.now().isoformat()
+        })
+
     except Exception as e:
-        wa_log("Customer Opt-In Error", f"{e}\n{frappe.get_traceback()}")
+        frappe.log_error("Customer Opt-In Error", f"{e}\n{frappe.get_traceback()}")
 
 
 ## Save Message and Return Document Name
@@ -373,17 +319,15 @@ def save_whatsapp_message(message, message_text, media_id="", public_file_url=No
             "custom_status": "Incoming",
             "message_id": msg_id,
             "message_status": "received",
-            "custom_opt_in": 1 if is_optin else 0  # Set opt-in checkbox if it's opt-in message
+            "custom_opt_in": 1 if is_optin else 0
         })
         doc.insert(ignore_permissions=True)
         frappe.db.commit()
-        
-        wa_log("Message Saved", f"{doc.name} from {from_number} (Opt-in: {is_optin})")
 
         return doc.name
 
     except Exception:
-        wa_log("Save Message Failed", frappe.get_traceback())
+        frappe.log_error("Save Message Failed", frappe.get_traceback())
         return None
 
 
@@ -410,10 +354,6 @@ def find_customer_by_whatsapp(number):
 
 ## Link Whatsapp Messages to Customer on Customer Save
 def link_whatsapp_messages_to_customer(doc, method=None):
-    """
-    Hook: Called when Customer is saved
-    Links WhatsApp messages to customer and checks for opt-in in message history
-    """
     if not doc.whatsapp_number:
         return
 
@@ -428,17 +368,13 @@ def link_whatsapp_messages_to_customer(doc, method=None):
 
         messages = frappe.db.get_all(
             "Whatsapp Message",
-            filters={
-                "from_number": ["in", list(patterns)]
-            },
+            filters={"from_number": ["in", list(patterns)]},
             fields=["name", "message", "custom_opt_in"]
         )
 
-        # Track if customer should be opted in
         should_opt_in = False
 
         for msg in messages:
-            # Link customer to message
             frappe.db.set_value(
                 "Whatsapp Message",
                 msg.name,
@@ -447,28 +383,20 @@ def link_whatsapp_messages_to_customer(doc, method=None):
                 update_modified=False
             )
 
-            # Check if any message has opt-in checked
             if msg.get("custom_opt_in"):
                 should_opt_in = True
-            
-            # Also check message text for opt-in phrase (legacy messages)
-            if not should_opt_in and "exclusive deals" in normalize_text(msg.get("message", "")):
+
+            if not should_opt_in and check_for_optin_message(msg.get("message", "")):
                 should_opt_in = True
 
-        # Update customer opt-in if needed
         if should_opt_in and not doc.custom_opt_in:
-            frappe.db.set_value(
-                "Customer",
-                doc.name,
-                "custom_opt_in",
-                1,
-                update_modified=False
+            frappe.db.sql(
+                "UPDATE `tabCustomer` SET `custom_opt_in` = 1 WHERE `name` = %s",
+                (doc.name,)
             )
-            wa_log("Customer Opt-In Set", f"Customer {doc.name} opted in based on message history")
 
         frappe.db.commit()
-        
-        # Emit event for updated messages
+
         if messages:
             emit_whatsapp_event("whatsapp_customer_linked", {
                 "customer": doc.name,
@@ -478,4 +406,4 @@ def link_whatsapp_messages_to_customer(doc, method=None):
             })
 
     except Exception:
-        wa_log("Customer Link Error", frappe.get_traceback())
+        frappe.log_error("Customer Link Error", frappe.get_traceback())
