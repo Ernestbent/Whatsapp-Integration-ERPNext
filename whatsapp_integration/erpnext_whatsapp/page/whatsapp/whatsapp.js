@@ -1,4 +1,13 @@
 frappe.pages['whatsapp'].on_page_load = function(wrapper) {
+    // Check role before loading page
+    const allowed_roles = ['CRM']; // change to your roles
+    const user_roles = frappe.user_roles || [];
+    const has_access = allowed_roles.some(role => user_roles.includes(role));
+
+    if (!has_access) {
+        $(wrapper).html('<div style="padding:40px;text-align:center;color:#667781;">You do not have permission to access this page.</div>');
+        return;
+    }
     var page = frappe.ui.make_app_page({
         parent: wrapper,
         title: 'Whatsapp',

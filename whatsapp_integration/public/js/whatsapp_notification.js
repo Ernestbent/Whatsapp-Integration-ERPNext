@@ -279,6 +279,12 @@ function inject_responsive_styles() {
 
 // Whatsapp Icon Injection
 function add_whatsapp_icon() {
+    // Role check - only show for CRM and System Manager
+    const allowed_roles = ['CRM', 'System Manager'];
+    const user_roles = frappe.user_roles || [];
+    const has_access = allowed_roles.some(role => user_roles.includes(role));
+    if (!has_access) return;
+
     if ($('.whatsapp-icon-container').length > 0) return;
     if (typeof $ === 'undefined' || !document.body) return;
 
