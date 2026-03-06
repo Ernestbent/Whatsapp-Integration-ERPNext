@@ -34,8 +34,8 @@
    "type": "Link"
   }
  ],
- "modified": "2026-03-02 13:12:10.807818",
- "modified_by": "ernestben69@gmail.com",
+ "modified": "2026-03-06 17:08:50.505333",
+ "modified_by": "Administrator",
  "module": "ERPNext Whatsapp",
  "name": "Whatsapp Integration",
  "number_cards": [],
@@ -43,11 +43,7 @@
  "parent_page": "",
  "public": 1,
  "quick_lists": [],
- "roles": [
-  {
-   "role": "CRM"
-  }
- ],
+ "roles": [],
  "sequence_id": 2.0,
  "shortcuts": [
   {

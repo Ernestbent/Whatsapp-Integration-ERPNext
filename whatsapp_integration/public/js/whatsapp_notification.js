@@ -56,8 +56,8 @@ if (window.MutationObserver) {
                 mutation.addedNodes.forEach(node => {
                     if (node.nodeType === 1) {
                         const $node = $(node);
-                        if ($node.find('header, .navbar, nav, .navbar-right, .navbar-nav').length ||
-                            $node.is('header, .navbar, nav, .navbar-right, .navbar-nav')) {
+                        if ($node.find('header, .navbar, nav, .navbar-collapse, .navbar-nav').length ||
+                            $node.is('header, .navbar, nav, .navbar-collapse, .navbar-nav')) {
                             should_check = true;
                         }
                     }
@@ -72,15 +72,14 @@ if (window.MutationObserver) {
 // Inject responsive styles
 function inject_responsive_styles() {
     if ($('#whatsapp-responsive-styles').length) return;
-    
+
     const styles = `
         <style id="whatsapp-responsive-styles">
-            /* Desktop styles (default) */
             .whatsapp-icon-container {
                 margin-left: 12px;
                 margin-right: 16px;
             }
-            
+
             .whatsapp-dropdown {
                 min-width: 370px;
                 max-width: 430px;
@@ -92,36 +91,32 @@ function inject_responsive_styles() {
                 left: auto;
                 transform: none;
             }
-            
+
             .whatsapp-messages-container {
                 max-height: 420px;
                 overflow-y: auto;
                 background: white;
             }
-            
+
             .whatsapp-chat-link {
                 transition: background 0.2s ease;
             }
-            
-            /* Tablet styles */
+
             @media (max-width: 1024px) and (min-width: 769px) {
                 .whatsapp-dropdown {
                     min-width: 340px;
                     max-width: 380px;
                 }
-                
                 .whatsapp-messages-container {
                     max-height: 380px;
                 }
             }
-            
-            /* Mobile landscape and small tablets */
+
             @media (max-width: 768px) and (min-width: 481px) {
                 .whatsapp-icon-container {
                     margin-left: 8px;
                     margin-right: 8px;
                 }
-                
                 .whatsapp-dropdown {
                     position: fixed !important;
                     left: 50% !important;
@@ -135,34 +130,26 @@ function inject_responsive_styles() {
                     box-shadow: 0 10px 40px rgba(0,0,0,0.3) !important;
                     z-index: 1050 !important;
                 }
-                
                 .whatsapp-messages-container {
                     max-height: calc(75vh - 120px) !important;
                 }
-                
                 .whatsapp-dropdown::before {
                     content: '';
                     position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background: rgba(0, 0, 0, 0.5);
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    background: rgba(0,0,0,0.5);
                     z-index: -1;
                 }
             }
-            
-            /* Mobile portrait */
+
             @media (max-width: 480px) {
                 .whatsapp-icon-container {
                     margin-left: 6px;
                     margin-right: 6px;
                 }
-                
                 .whatsapp-icon-container .fa-whatsapp {
                     font-size: 20px !important;
                 }
-                
                 .whatsapp-count-badge {
                     top: -8px !important;
                     right: -8px !important;
@@ -171,7 +158,6 @@ function inject_responsive_styles() {
                     font-size: 10px !important;
                     line-height: 18px !important;
                 }
-                
                 .whatsapp-dropdown {
                     position: fixed !important;
                     left: 50% !important;
@@ -186,83 +172,65 @@ function inject_responsive_styles() {
                     z-index: 1050 !important;
                     margin: 0 !important;
                 }
-                
                 .whatsapp-dropdown > div:first-child {
                     padding: 12px 14px !important;
                     font-size: 14px !important;
                 }
-                
                 .whatsapp-messages-container {
                     max-height: calc(85vh - 110px) !important;
                 }
-                
                 .whatsapp-chat-link {
                     padding: 12px 14px !important;
                 }
-                
                 .whatsapp-chat-link strong {
                     font-size: 13px !important;
                 }
-                
                 .whatsapp-chat-link .small {
                     font-size: 12px !important;
                 }
-                
                 .whatsapp-dropdown > div:last-child {
                     padding: 10px 14px !important;
                 }
-                
                 .whatsapp-view-all {
                     font-size: 13px !important;
                 }
-                
                 .whatsapp-dropdown::before {
                     content: '';
                     position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background: rgba(0, 0, 0, 0.6);
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    background: rgba(0,0,0,0.6);
                     z-index: -1;
                 }
             }
-            
-            /* Extra small devices */
+
             @media (max-width: 360px) {
                 .whatsapp-dropdown {
                     width: 96vw !important;
                     max-height: 90vh !important;
                 }
-                
                 .whatsapp-messages-container {
                     max-height: calc(90vh - 100px) !important;
                 }
-                
                 .whatsapp-chat-link {
                     padding: 10px 12px !important;
                 }
             }
-            
-            /* Animation for dropdown */
+
             .whatsapp-dropdown {
                 opacity: 0;
                 visibility: hidden;
                 transition: opacity 0.2s ease, visibility 0.2s ease;
             }
-            
             .whatsapp-dropdown.show {
                 opacity: 1;
                 visibility: visible;
             }
-            
-            /* Smooth scrolling for messages */
+
             .whatsapp-messages-container {
                 scroll-behavior: smooth;
                 -webkit-overflow-scrolling: touch;
             }
-            
-            /* Better touch targets on mobile */
+
             @media (max-width: 768px) {
                 .whatsapp-chat-link {
                     min-height: 60px;
@@ -273,13 +241,13 @@ function inject_responsive_styles() {
             }
         </style>
     `;
-    
+
     $('head').append(styles);
 }
 
-// Whatsapp Icon Injection
+// WhatsApp Icon Injection
 function add_whatsapp_icon() {
-    // Role check - only show for CRM and System Manager
+    // Role check
     const allowed_roles = ['CRM', 'System Manager'];
     const user_roles = frappe.user_roles || [];
     const has_access = allowed_roles.some(role => user_roles.includes(role));
@@ -290,7 +258,9 @@ function add_whatsapp_icon() {
 
     inject_responsive_styles();
 
+    // Check navbar exists using correct selector for this Frappe theme
     const navbar_selectors = [
+        '.navbar-collapse .navbar-nav',
         '.navbar-right', '.navbar-nav', 'header .navbar ul',
         '#navbar-breadcrumbs + ul', 'header nav ul', '.navbar ul', 'nav ul'
     ];
@@ -334,35 +304,38 @@ function add_whatsapp_icon() {
         </li>
     `;
 
+    // Insert into correct navbar ul — .navbar-collapse .navbar-nav is first priority
     let inserted = false;
-    const targets = ['.navbar-right', '.navbar-nav', 'header nav ul', '.navbar ul', 'nav ul'];
+    const targets = [
+        '.navbar-collapse .navbar-nav',
+        '.navbar-right', '.navbar-nav',
+        'header nav ul', '.navbar ul', 'nav ul'
+    ];
     for (let sel of targets) {
         const $target = $(sel);
         if ($target.length) {
-            $target.append(whatsapp_html);
+            $target.prepend(whatsapp_html);
             inserted = true;
             break;
         }
     }
     if (!inserted) {
-        $('header nav ul, .navbar ul').first().append(whatsapp_html);
+        $('header nav ul, .navbar ul').first().prepend(whatsapp_html);
     }
 
     $('.whatsapp-icon-container .nav-link').off('click.wa').on('click.wa', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        
+
         const $container = $('.whatsapp-icon-container');
         const $dropdown = $('.whatsapp-dropdown');
-        
+
         $container.toggleClass('open');
         $dropdown.toggleClass('show');
-        
+
         if ($container.hasClass('open')) {
             update_whatsapp_notifications();
             handle_whatsapp_dropdown_position();
-            
-            // On mobile, prevent body scroll when dropdown is open
             if (window.innerWidth <= 768) {
                 $('body').css('overflow', 'hidden');
             }
@@ -371,7 +344,6 @@ function add_whatsapp_icon() {
         }
     });
 
-    // Close button for mobile
     $('.whatsapp-close-btn').off('click').on('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
@@ -389,14 +361,11 @@ function add_whatsapp_icon() {
 function handle_whatsapp_dropdown_position() {
     const $dropdown = $('.whatsapp-dropdown');
     const $closeBtn = $('.whatsapp-close-btn');
-    
+
     if (!$dropdown.length) return;
 
     if (window.innerWidth <= 768) {
-        // Mobile: Show close button
         $closeBtn.show();
-        
-        // Ensure mobile styles are applied
         $dropdown.css({
             position: 'fixed',
             left: '50%',
@@ -405,7 +374,6 @@ function handle_whatsapp_dropdown_position() {
             zIndex: '1050'
         });
     } else {
-        // Desktop/Tablet: Hide close button, use default positioning
         $closeBtn.hide();
         $dropdown.css({
             position: 'absolute',
@@ -425,7 +393,6 @@ function close_whatsapp_dropdown() {
 
 $(window).on('resize', frappe.utils.debounce(() => {
     handle_whatsapp_dropdown_position();
-    // Close dropdown on orientation change
     if ($('.whatsapp-dropdown').hasClass('show')) {
         close_whatsapp_dropdown();
     }
@@ -439,12 +406,12 @@ function update_whatsapp_notifications() {
 
     frappe.call({
         method: "frappe.client.get_count",
-        args: { 
-            doctype: "Whatsapp Message", 
-            filters: { 
-                custom_status: "Incoming", 
-                custom_read: 0 
-            } 
+        args: {
+            doctype: "Whatsapp Message",
+            filters: {
+                custom_status: "Incoming",
+                custom_read: 0
+            }
         },
         callback: r => {
             const count = r.message || 0;
@@ -458,9 +425,9 @@ function update_whatsapp_notifications() {
         method: "frappe.client.get_list",
         args: {
             doctype: "Whatsapp Message",
-            filters: { 
-                custom_status: "Incoming", 
-                custom_read: 0 
+            filters: {
+                custom_status: "Incoming",
+                custom_read: 0
             },
             fields: ["name", "from_number", "customer", "message", "creation", "timestamp"],
             order_by: "creation desc",
@@ -485,7 +452,7 @@ function update_whatsapp_notifications() {
 function format_phone_display(phone_number) {
     if (!phone_number) return "Unknown";
     const clean = phone_number.replace(/\D/g, '');
-    
+
     if (clean.length === 12 && clean.startsWith('256')) {
         return `+${clean.slice(0,3)} ${clean.slice(3,6)} ${clean.slice(6,9)} ${clean.slice(9)}`;
     } else if (clean.length >= 10) {
@@ -503,7 +470,7 @@ function enrich_and_render_messages(messages) {
     }
 
     const customers = [...new Set(messages.filter(m => m.customer).map(m => m.customer))];
-    
+
     if (customers.length === 0) {
         messages.forEach(msg => {
             msg.display_name = format_phone_display(msg.from_number);
@@ -525,7 +492,7 @@ function enrich_and_render_messages(messages) {
             (r.message || []).forEach(c => {
                 customer_map[c.name] = c.customer_name;
             });
-            
+
             messages.forEach(msg => {
                 if (msg.customer && customer_map[msg.customer]) {
                     msg.display_name = customer_map[msg.customer];
@@ -535,7 +502,7 @@ function enrich_and_render_messages(messages) {
                     msg.has_customer = false;
                 }
             });
-            
+
             render_whatsapp_messages(messages);
         },
         error: () => {
@@ -587,7 +554,7 @@ function render_whatsapp_messages(messages) {
         const latest = d.messages.sort((a, b) => new Date(b.creation) - new Date(a.creation))[0];
         const text = (latest.message || "").substring(0, 70) + ((latest.message || "").length > 70 ? "..." : "");
         const time = frappe.datetime.comment_when(d.latest_time);
-        
+
         const contact_identifier = d.customer || d.from_number;
         const contact_type = d.customer ? 'customer' : 'contact';
         const unknownBadge = latest.is_unknown ? '<i class="fa fa-question-circle" style="color:#ff9800;margin-left:4px;" title="Unknown contact"></i>' : '';
@@ -610,20 +577,19 @@ function render_whatsapp_messages(messages) {
 window.handle_chat_click = function(contact_identifier, contact_type, event) {
     event.preventDefault();
     event.stopPropagation();
-    
+
     close_whatsapp_dropdown();
-    
+
     sessionStorage.setItem('whatsapp_selected_contact', contact_identifier);
     sessionStorage.setItem('whatsapp_selected_type', contact_type);
-    
+
     frappe.set_route('whatsapp');
 };
 
-// Autoclose dropdown
+// Autoclose dropdown on View All click
 $(document).on('click', '.whatsapp-view-all', function(e) {
     e.preventDefault();
     close_whatsapp_dropdown();
-    
     setTimeout(() => {
         frappe.set_route('whatsapp');
     }, 100);
