@@ -900,97 +900,82 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             method: "frappe.client.get_list",
             args: {
                 doctype: "Whatsapp Message",
-                fields: ["name","customer","from_number","message","creation","custom_status","custom_read","message_status"],
-                filters: [["message","!=", ""]],
+                fields: ["name", "customer", "customer.customer_name as customer_name", "from_number", "message", "creation", "custom_status", "custom_read", "message_status"],
+                filters: [["message", "!=", ""]],
                 order_by: "creation desc",
                 limit_page_length: 500
             },
             callback(r) {
                 if (!r.message) return;
-                const convMap = {}, unreadMap = {};
-                const phoneNumbers = new Set();
+
+                const convMap   = {};
+                const unreadMap = {};
 
                 r.message.forEach(msg => {
                     const key = msg.from_number;
-                    phoneNumbers.add(key);
 
                     if (!convMap[key] || new Date(msg.creation) > new Date(convMap[key].creation)) {
                         convMap[key] = msg;
                     }
-
                     if (msg.custom_status === "Incoming" && !msg.custom_read) {
                         unreadMap[key] = (unreadMap[key] || 0) + 1;
                     }
                 });
 
-                frappe.call({
-                    method: "frappe.client.get_list",
-                    args: {
-                        doctype: "Whatsapp Message",
-                        fields: ["from_number", "customer"],
-                        filters: [["customer", "!=", ""], ["from_number", "in", Array.from(phoneNumbers)]],
-                        order_by: "creation desc",
-                        group_by: "from_number"
-                    },
-                    callback(customerResult) {
-                        const customerMap = {};
-                        (customerResult.message || []).forEach(item => {
-                            if (item.customer && item.from_number) {
-                                customerMap[item.from_number] = item.customer;
-                            }
-                        });
+                let html = "";
+                Object.keys(convMap).forEach(key => {
+                    const msg = convMap[key];
 
-                        let html = "";
-                        Object.keys(convMap).forEach(key => {
-                            const msg = convMap[key];
-                            const displayName = customerMap[key] || format_phone_display(msg.from_number);
-                            const preview = (msg.message||"").substring(0,45)+(msg.message.length>45?"...":"");
-                            const unread = unreadMap[key] || 0;
-                            const time = format_time_ago(msg.creation);
-                            const tickHtml = msg.custom_status !== "Incoming" ? get_whatsapp_ticks(msg.custom_status, msg.custom_read, msg.message_status) : '';
+                    // Use customer_name from linked Customer, fallback to phone
+                    const displayName = msg.customer_name || format_phone_display(msg.from_number);
 
-                            html += `<div class="wa-chat-item" data-contact="${frappe.utils.escape_html(msg.from_number)}">
-                                        <div class="wa-avatar">${frappe.utils.escape_html(displayName).charAt(0).toUpperCase()}</div>
-                                        <div class="wa-chat-info">
-                                            <div class="wa-chat-name">${frappe.utils.escape_html(displayName)}</div>
-                                            <div class="wa-chat-preview">${tickHtml}${frappe.utils.escape_html(preview)||"No message"}</div>
-                                        </div>
-                                        <div class="wa-chat-meta">
-                                            <div class="wa-chat-time">${time}</div>
-                                            ${unread ? `<div class="wa-unread-badge">${unread}</div>` : ''}
-                                        </div>
-                                    </div>`;
-                        });
+                    const preview  = (msg.message || "").substring(0, 45) + (msg.message.length > 45 ? "..." : "");
+                    const unread   = unreadMap[key] || 0;
+                    const time     = format_time_ago(msg.creation);
+                    const tickHtml = msg.custom_status !== "Incoming"
+                        ? get_whatsapp_ticks(msg.custom_status, msg.custom_read, msg.message_status)
+                        : '';
 
-                        $("#wa-chat-list").html(html || "<div class='wa-empty-state'><div>No conversations yet</div></div>");
+                    html += `<div class="wa-chat-item" data-contact="${frappe.utils.escape_html(msg.from_number)}">
+                                <div class="wa-avatar">${frappe.utils.escape_html(displayName).charAt(0).toUpperCase()}</div>
+                                <div class="wa-chat-info">
+                                    <div class="wa-chat-name">${frappe.utils.escape_html(displayName)}</div>
+                                    <div class="wa-chat-preview">${tickHtml}${frappe.utils.escape_html(preview) || "No message"}</div>
+                                </div>
+                                <div class="wa-chat-meta">
+                                    <div class="wa-chat-time">${time}</div>
+                                    ${unread ? `<div class="wa-unread-badge">${unread}</div>` : ''}
+                                </div>
+                            </div>`;
+                });
 
-                        $(".wa-chat-item").off("click").on("click", function() {
-                            $(".wa-chat-item").removeClass("active");
-                            $(this).addClass("active");
+                $("#wa-chat-list").html(html || "<div class='wa-empty-state'><div>No conversations yet</div></div>");
 
-                            active_contact = $(this).data("contact");
-                            active_customer = $(this).find('.wa-chat-name').text();
+                $(".wa-chat-item").off("click").on("click", function() {
+                    $(".wa-chat-item").removeClass("active");
+                    $(this).addClass("active");
 
-                            $("#wa-header-name").text(active_customer);
-                            $("#wa-profile-avatar").text(active_customer.charAt(0).toUpperCase());
+                    active_contact  = $(this).data("contact");
+                    active_customer = $(this).find('.wa-chat-name').text();
 
-                            if ($(window).width() <= 768) {
-                                $('.wa-sidebar').addClass('hidden');
-                            }
+                    $("#wa-header-name").text(active_customer);
+                    $("#wa-profile-avatar").text(active_customer.charAt(0).toUpperCase());
 
-                            show_cached_messages(active_contact);
-                            load_messages(active_contact, true);
-                        });
-
-                        $('#wa-search-input').off('input').on('input', function() {
-                            const searchTerm = $(this).val().toLowerCase();
-                            $('.wa-chat-item').each(function() {
-                                const name = $(this).find('.wa-chat-name').text().toLowerCase();
-                                const preview = $(this).find('.wa-chat-preview').text().toLowerCase();
-                                $(this).toggle(name.includes(searchTerm) || preview.includes(searchTerm));
-                            });
-                        });
+                    if ($(window).width() <= 768) {
+                        $('.wa-sidebar').addClass('hidden');
                     }
+
+                    show_cached_messages(active_contact);
+                    load_messages(active_contact, true);
+                });
+
+                $('#wa-search-input').off('input').on('input', function() {
+                    const searchTerm = $(this).val().toLowerCase();
+                    $('.wa-chat-item').each(function() {
+                        const name    = $(this).find('.wa-chat-name').text().toLowerCase();
+                        const preview = $(this).find('.wa-chat-preview').text().toLowerCase();
+                        $(this).toggle(name.includes(searchTerm) || preview.includes(searchTerm));
+                    });
                 });
             }
         });

@@ -33,7 +33,7 @@ def generate_report_pdf(report_name: str, filters: dict) -> tuple:
     today    = frappe.utils.today()
     time_now = datetime.now().strftime("%H:%M")
 
-    # Step 1: Run the report
+    # Run the report
     report        = frappe.get_doc("Report", report_name)
     columns, data = report.get_data(
         filters = filters,
@@ -41,7 +41,7 @@ def generate_report_pdf(report_name: str, filters: dict) -> tuple:
         as_dict = True
     )
 
-    # Step 2: Build column headers
+    # Build column headers
     col_headers = ""
     for col in columns:
         if isinstance(col, dict):
@@ -50,7 +50,7 @@ def generate_report_pdf(report_name: str, filters: dict) -> tuple:
             label = str(col).split(":")[0]
         col_headers += f"<th>{label}</th>"
 
-    # Step 3: Build rows
+    # Build rows
     rows = ""
     for row in data:
         cells = ""
@@ -197,6 +197,7 @@ def log_whatsapp_message(from_number, message_type, message, media_id,
                          message_status, whatsapp_message_id, customer=None, file_url=None):
     """
     Log outgoing WhatsApp message to Whatsapp Message doctype.
+    Mirrors the same pattern used in upload_media_whatsapp_cloud.py.
     """
     try:
         current_time = datetime.now().strftime("%H:%M:%S")
@@ -220,6 +221,7 @@ def log_whatsapp_message(from_number, message_type, message, media_id,
 
         frappe.db.commit()
 
+        # Trigger realtime update so chat UI refreshes instantly
         frappe.publish_realtime("whatsapp_new_message", {
             "contact_number": from_number,
             "message_name":   msg_doc.name,
@@ -240,13 +242,13 @@ def send_report_job(recipients: list, report_name: str, filters: dict = None):
     Generate report PDF and send to all recipients via WhatsApp.
 
     Args:
-        recipients  : list of phone numbers e.g. ['256726773735', '256791343418']
+        recipients  : list of phone numbers e.g. ['256757001909']
         report_name : exact ERPNext report name e.g. 'Dispatched Report'
         filters     : optional - defaults to today's date range
 
     Usage (Frappe console):
         from whatsapp_integration.erpnext_whatsapp.custom_scripts.automatic_whatsapp_dispatch import send_report_job
-        send_report_job(['256726773735', '256791343418'], 'Dispatched Report')
+        send_report_job(['256757001909'], 'Dispatched Report')
     """
     today   = frappe.utils.today()
     filters = filters or {
@@ -262,20 +264,21 @@ def send_report_job(recipients: list, report_name: str, filters: dict = None):
     )
 
     try:
-        # Step 1: Generate PDF
+        # Generate PDF bytes from report
         pdf_bytes, filename = generate_report_pdf(report_name, filters)
 
-        # Step 2: Save to File doctype for audit trail
+        # Save to File doctype for audit trail
         file_url = save_pdf_to_file_doctype(pdf_bytes, filename)
 
-        # Step 3: Upload to WhatsApp once — reuse for all recipients
+        # Upload to WhatsApp once — reuse media_id for all recipients
         media_id = upload_document_to_whatsapp(pdf_bytes, filename)
 
-        # Step 4: Send to each recipient and log individually
+        # Send to each recipient and log individually
         for phone in recipients:
             try:
                 whatsapp_msg_id = send_document_to_recipient(phone, media_id, caption, filename)
 
+                # Log success to Whatsapp Message doctype
                 log_whatsapp_message(
                     from_number         = phone,
                     message_type        = "document",
@@ -286,9 +289,9 @@ def send_report_job(recipients: list, report_name: str, filters: dict = None):
                     customer            = None,
                     file_url            = file_url
                 )
-                frappe.logger().info(f"[WhatsApp] Report sent to {phone}")
 
             except Exception:
+                # Log failure to Whatsapp Message doctype
                 log_whatsapp_message(
                     from_number         = phone,
                     message_type        = "document",
@@ -319,6 +322,6 @@ def run_scheduled_report():
     Runs every night at 11:00 PM automatically.
     """
     send_report_job(
-        recipients  = ["256726773735", "256791343418"],
+        recipients  = ["256757001909"],
         report_name = "Dispatched Report"
     )

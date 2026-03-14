@@ -202,12 +202,13 @@ doc_events = {
 
 # Scheduled Tasks
 # ---------------
-# scheduler_events = {
-# 	"daily": [
-# 		"whatsapp_integration.erpnext_whatsapp.background_jobs.send_report_daily.send_general_ledger_email"
-# 	],
-	
-# }
+scheduler_events = {
+    "cron": {
+        "0 23 * * *": [   # 11:00 PM every day
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.automatic_whatsapp_dispatch.run_scheduled_report"
+        ]
+    }
+}
 
 # Testing
 # -------
