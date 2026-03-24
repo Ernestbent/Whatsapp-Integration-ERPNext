@@ -158,17 +158,17 @@ doctype_js = {
 # ---------------
 # Hook on document methods and events
 doc_events = {
-    "Sales Order": {
-        "on_submit": [
-            # "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_order_confirmation",
-            # "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_sales_order.send_sales_order_background",
-            "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_message_template_sales_order.on_sales_order_submit"
+    # "Sales Order": {
+    #     "on_submit": [
+    #         # "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_order_confirmation",
+    #         # "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_sales_order.send_sales_order_background",
+    #         "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_message_template_sales_order.on_sales_order_submit"
            
-            ],
-        "Sales Order": {
-            "on_update_after_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.notifications_on_dispacth.send_dispatch_notification",
-    }
-    },
+    #         ],
+    # #     "Sales Order": {
+    # #         "on_update_after_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.notifications_on_dispacth.send_dispatch_notification",
+    # # }
+    # },
     # "Sales Invoice": {
     #     "on_submit": [
     #         "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_invoice_notification",
@@ -191,9 +191,9 @@ doc_events = {
             "whatsapp_integration.whatsapp_webhook.webhook.link_whatsapp_messages_to_customer",
         ]
     },
-    "Payment Entry":{
-        "on_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_message_templates.on_payment_entry_submit"
-    },
+    # "Payment Entry":{
+    #     "on_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_message_templates.on_payment_entry_submit"
+    # },
     # "Purchase Order":{
     #     "on_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_message_templates.on_purchase_order_submit"
     # }
@@ -202,7 +202,7 @@ doc_events = {
 
 # Scheduled Tasks
 scheduler_events = {
-    "cron": {
+    "cron": {             
         "55 23 * * *": [   # 11:55 PM every day
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.automatic_whatsapp_dispatch.run_scheduled_report"
         ]

@@ -33,6 +33,15 @@ if (typeof frappe !== 'undefined') {
         frappe.router.on('change', () => {
             add_whatsapp_icon();
             setTimeout(add_whatsapp_icon, 100);
+
+            // When navigating to WhatsApp page, auto-open the selected contact
+            const route = frappe.get_route();
+            if (route && route[0] === 'whatsapp') {
+                setTimeout(() => auto_open_whatsapp_contact(), 800);
+                setTimeout(() => auto_open_whatsapp_contact(), 1500);
+                setTimeout(() => auto_open_whatsapp_contact(), 2500);
+                setTimeout(() => auto_open_whatsapp_contact(), 3500); // Extra attempt for slow loads
+            }
         });
     }
 
@@ -69,6 +78,100 @@ if (window.MutationObserver) {
     observer.observe(document.documentElement, { childList: true, subtree: true });
 }
 
+// Improved auto-open function with better matching
+function auto_open_whatsapp_contact() {
+    const contact = sessionStorage.getItem('whatsapp_selected_contact');
+    if (!contact) return;
+
+    console.log('Attempting to open contact:', contact);
+
+    // Clean the contact number for comparison (remove non-digits)
+    const cleanContact = contact.replace(/\D/g, '');
+    
+    // Try multiple selectors and matching strategies
+    let $target = null;
+    
+    // Strategy 1: Exact match on data-contact
+    $target = $(`.wa-chat-item[data-contact="${contact}"]`);
+    if ($target.length) {
+        console.log('Found by exact data-contact match');
+    }
+    
+    // Strategy 2: Match by data-contact with cleaned number
+    if (!$target || !$target.length) {
+        $('.wa-chat-item').each(function() {
+            const dataContact = $(this).data('contact');
+            if (dataContact) {
+                const cleanDataContact = dataContact.replace(/\D/g, '');
+                if (cleanDataContact === cleanContact) {
+                    $target = $(this);
+                    console.log('Found by cleaned number match');
+                    return false;
+                }
+            }
+        });
+    }
+    
+    // Strategy 3: Match by text content (display name)
+    if (!$target || !$target.length) {
+        $('.wa-chat-item').each(function() {
+            const displayName = $(this).find('.wa-chat-name').text();
+            // Check if display name contains the phone number or is similar
+            if (displayName.includes(cleanContact) || cleanContact.includes(displayName.replace(/\D/g, ''))) {
+                $target = $(this);
+                console.log('Found by display name match');
+                return false;
+            }
+        });
+    }
+    
+    // Strategy 4: Match by phone number in any attribute or text
+    if (!$target || !$target.length) {
+        $('.wa-chat-item').each(function() {
+            const html = $(this).html();
+            if (html && html.includes(cleanContact)) {
+                $target = $(this);
+                console.log('Found by HTML content match');
+                return false;
+            }
+        });
+    }
+
+    if ($target && $target.length) {
+        console.log('Successfully found chat item, clicking...');
+        
+        // Clear sessionStorage so it doesn't re-open on next visit
+        sessionStorage.removeItem('whatsapp_selected_contact');
+        
+        // Scroll into view in sidebar
+        $target[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Trigger click to open chat
+        $target[0].click();
+        
+        // Add visual feedback
+        $target.css('background', '#e9edef');
+        setTimeout(() => {
+            $target.css('background', '');
+        }, 500);
+        
+        return true;
+    } else {
+        console.log('Could not find chat item for contact:', contact);
+        
+        // If not found, try again after a delay (for dynamic content)
+        setTimeout(() => {
+            const retryContact = sessionStorage.getItem('whatsapp_selected_contact');
+            if (retryContact === contact) {
+                console.log('Retrying to find chat item...');
+                auto_open_whatsapp_contact();
+            }
+        }, 1000);
+        
+        return false;
+    }
+}
+
 // Inject responsive styles
 function inject_responsive_styles() {
     if ($('#whatsapp-responsive-styles').length) return;
@@ -100,6 +203,10 @@ function inject_responsive_styles() {
 
             .whatsapp-chat-link {
                 transition: background 0.2s ease;
+            }
+
+            .whatsapp-chat-link:hover {
+                background: #f0fdf4 !important;
             }
 
             @media (max-width: 1024px) and (min-width: 769px) {
@@ -247,10 +354,15 @@ function inject_responsive_styles() {
 
 // WhatsApp Icon Injection
 function add_whatsapp_icon() {
+    // Wait until frappe.user_roles is populated
+    if (!frappe.user_roles || frappe.user_roles.length === 0) {
+        setTimeout(add_whatsapp_icon, 500);
+        return;
+    }
+
     // Role check
-    const allowed_roles = ['CRM', 'System Manager'];
-    const user_roles = frappe.user_roles || [];
-    const has_access = allowed_roles.some(role => user_roles.includes(role));
+    const allowed_roles = ['Whatsapp User'];
+    const has_access = allowed_roles.some(role => frappe.user_roles.includes(role));
     if (!has_access) return;
 
     if ($('.whatsapp-icon-container').length > 0) return;
@@ -258,7 +370,7 @@ function add_whatsapp_icon() {
 
     inject_responsive_styles();
 
-    // Check navbar exists using correct selector for this Frappe theme
+    // Check navbar exists
     const navbar_selectors = [
         '.navbar-collapse .navbar-nav',
         '.navbar-right', '.navbar-nav', 'header .navbar ul',
@@ -287,7 +399,7 @@ function add_whatsapp_icon() {
                         <i class="fa fa-whatsapp" style="color: #25D366; margin-right: 8px;"></i>
                         WhatsApp Messages
                     </span>
-                    <button class="whatsapp-close-btn" style="display: none; background: none; border: none; font-size: 24px; color: #666; cursor: pointer; padding: 0; line-height: 1;">×</button>
+                    <button class="whatsapp-close-btn" style="display: none; background: none; border: none; font-size: 24px; color: #666; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
                 </div>
                 <div class="whatsapp-messages-container">
                     <div class="text-center text-muted py-5">
@@ -304,7 +416,7 @@ function add_whatsapp_icon() {
         </li>
     `;
 
-    // Insert into correct navbar ul — .navbar-collapse .navbar-nav is first priority
+    // Insert into correct navbar ul
     let inserted = false;
     const targets = [
         '.navbar-collapse .navbar-nav',
@@ -515,7 +627,7 @@ function enrich_and_render_messages(messages) {
     });
 }
 
-// Render Messages - Group by contact
+// Render Messages - Group by from_number (matches WhatsApp page data-contact attribute)
 function render_whatsapp_messages(messages) {
     const container = $('.whatsapp-messages-container');
     if (!messages || messages.length === 0) {
@@ -526,15 +638,15 @@ function render_whatsapp_messages(messages) {
         return;
     }
 
+    // Group by from_number — this is the key that matches data-contact on the WhatsApp page
     const grouped = {};
     messages.forEach(msg => {
-        const key = msg.customer || msg.from_number || "Unknown";
+        const key = msg.from_number || "Unknown";
         if (!grouped[key]) {
             grouped[key] = {
                 messages: [],
-                display_name: msg.display_name || msg.customer || msg.from_number || "Unknown",
+                display_name: msg.display_name || format_phone_display(msg.from_number),
                 from_number: msg.from_number,
-                customer: msg.customer,
                 latest_time: msg.creation
             };
         }
@@ -554,36 +666,45 @@ function render_whatsapp_messages(messages) {
         const latest = d.messages.sort((a, b) => new Date(b.creation) - new Date(a.creation))[0];
         const text = (latest.message || "").substring(0, 70) + ((latest.message || "").length > 70 ? "..." : "");
         const time = frappe.datetime.comment_when(d.latest_time);
-
-        const contact_identifier = d.customer || d.from_number;
-        const contact_type = d.customer ? 'customer' : 'contact';
-        const unknownBadge = latest.is_unknown ? '<i class="fa fa-question-circle" style="color:#ff9800;margin-left:4px;" title="Unknown contact"></i>' : '';
+        const unread_count = d.messages.length;
 
         html += `<a href="#" class="d-block px-4 py-3 text-decoration-none border-bottom position-relative whatsapp-chat-link"
-            onclick="handle_chat_click('${contact_identifier}', '${contact_type}', event)"
+            onclick="handle_chat_click('${frappe.utils.escape_html(d.from_number)}', event)"
             style="background: white;">
             <div class="d-flex align-items-center justify-content-between mb-1">
-                <strong style="font-size:14px;">${frappe.utils.escape_html(d.display_name)}${unknownBadge}</strong>
-                <small class="text-muted">${time}</small>
+                <strong style="font-size:14px;">${frappe.utils.escape_html(d.display_name)}</strong>
+                <small class="text-muted" style="font-size:11px;">${time}</small>
             </div>
-            <div class="text-muted small" style="padding-left:4px;">${frappe.utils.escape_html(text)}</div>
-            ${d.messages.length > 1 ? `<span class="badge badge-success position-absolute" style="top:14px; right:16px;">${d.messages.length}</span>` : ""}
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="text-muted small" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${frappe.utils.escape_html(text)}</div>
+                <span style="background:#25D366; color:white; border-radius:12px; padding:2px 7px; font-size:12px; font-weight:600; min-width:20px; text-align:center; margin-left:8px; flex-shrink:0;">${unread_count}</span>
+            </div>
         </a>`;
     });
     container.html(html);
 }
 
-// Handle chat click
-window.handle_chat_click = function(contact_identifier, contact_type, event) {
-    event.preventDefault();
-    event.stopPropagation();
+// Handle chat click with improved storage
+window.handle_chat_click = function(from_number, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
 
     close_whatsapp_dropdown();
 
-    sessionStorage.setItem('whatsapp_selected_contact', contact_identifier);
-    sessionStorage.setItem('whatsapp_selected_type', contact_type);
+    // Store the raw from_number as is
+    sessionStorage.setItem('whatsapp_selected_contact', from_number);
+    console.log('Stored contact:', from_number);
 
-    frappe.set_route('whatsapp');
+    const current_route = frappe.get_route();
+    if (current_route && current_route[0] === 'whatsapp') {
+        // Already on WhatsApp page — directly trigger open
+        setTimeout(() => auto_open_whatsapp_contact(), 100);
+    } else {
+        // Navigate — route change listener will fire auto_open_whatsapp_contact
+        frappe.set_route('whatsapp');
+    }
 };
 
 // Autoclose dropdown on View All click
