@@ -7,7 +7,15 @@ from datetime import datetime
 
 
 ## Real-time Event Emitter for Send Reply
-def emit_whatsapp_send_event(to_number, message_id, doc_name, message_type="text", media_url=None):
+def emit_whatsapp_send_event(
+    to_number,
+    message_id,
+    doc_name,
+    message_type="text",
+    media_url=None,
+    preview_text=None,
+    message_status="pending"
+):
     """
     Emit real-time events when sending messages
     """
@@ -26,24 +34,12 @@ def emit_whatsapp_send_event(to_number, message_id, doc_name, message_type="text
                 "message_id": message_id,
                 "message_type": "outgoing",
                 "whatsapp_type": message_type,
+                "message_text": preview_text or "",
                 "customer": customer,
                 "media_url": media_url,
+                "message_status": message_status,
                 "timestamp": datetime.now().isoformat(),
                 "action": "new_outgoing_message"
-            },
-            user=None,
-            after_commit=True
-        )
-        
-        # Also emit status event (initial sent status)
-        frappe.publish_realtime(
-            event="whatsapp_message_status_changed",
-            message={
-                "message_name": doc_name,
-                "message_id": message_id,
-                "new_status": "sent",
-                "contact_number": to_number,
-                "timestamp": datetime.now().isoformat()
             },
             user=None,
             after_commit=True
@@ -111,7 +107,7 @@ def send_whatsapp_reply(to_number, message_body, reply_to_message_id=None):
             "timestamp": current_time,
             "customer": customer,
             "custom_status": "Outgoing",
-            "message_status": "sent",  # Initial status
+            "message_status": "pending",
             "message_id": sent_msg_id  # CRITICAL: Save WhatsApp message ID
         })
         doc.insert(ignore_permissions=True)
@@ -122,7 +118,9 @@ def send_whatsapp_reply(to_number, message_body, reply_to_message_id=None):
             to_number=to_number,
             message_id=sent_msg_id,
             doc_name=doc.name,
-            message_type="text"
+            message_type="text",
+            preview_text=message_body,
+            message_status="pending"
         )
 
         return {"success": True, "message_id": sent_msg_id, "doc_name": doc.name}
@@ -328,7 +326,7 @@ def send_whatsapp_media_message(to_number, media_id, filename, file_type, captio
             "custom_document": local_file_url or "Attachment",
             "customer": customer,
             "custom_status": "Outgoing",
-            "message_status": "sent",  # Initial status
+            "message_status": "pending",
             "message_id": sent_msg_id  # Save WhatsApp message ID
         })
         doc.insert(ignore_permissions=True)
@@ -340,7 +338,9 @@ def send_whatsapp_media_message(to_number, media_id, filename, file_type, captio
             message_id=sent_msg_id,
             doc_name=doc.name,
             message_type=msg_type,
-            media_url=local_file_url
+            media_url=local_file_url,
+            preview_text=caption or filename or msg_type,
+            message_status="pending"
         )
 
         return {"success": True, "message_id": sent_msg_id, "doc_name": doc.name}
@@ -420,7 +420,7 @@ def send_whatsapp_attachment_by_url(to_number, file_url, filename, file_type, ca
             "custom_document": file_url,  # fall back to original url
             "customer": customer,
             "custom_status": "Outgoing",
-            "message_status": "sent",
+            "message_status": "pending",
             "message_id": sent_msg_id  # Save WhatsApp message ID
         })
         doc.insert(ignore_permissions=True)
@@ -432,7 +432,9 @@ def send_whatsapp_attachment_by_url(to_number, file_url, filename, file_type, ca
             message_id=sent_msg_id,
             doc_name=doc.name,
             message_type=msg_type,
-            media_url=file_url
+            media_url=file_url,
+            preview_text=caption or filename or msg_type,
+            message_status="pending"
         )
 
         return {"success": True, "message_id": sent_msg_id, "doc_name": doc.name}
@@ -464,7 +466,9 @@ def test_realtime_event(contact_number):
             to_number=contact_number,
             message_id=f"test_{datetime.now().timestamp()}",
             doc_name=f"TEST_{datetime.now().timestamp()}",
-            message_type="text"
+            message_type="text",
+            preview_text="Realtime test message",
+            message_status="pending"
         )
         
         return {"success": True, "message": "Test event sent"}
