@@ -63,6 +63,7 @@ doctype_js = {
     # "Whatsapp Live Chat": "public/js/whatsapp_live_chat.js",  
     # "Whatsapp Setting" : "public/js/create_chats_customers.js",
     "Whatsapp Message Template": "public/js/message_template_button.js",   
+    "BroadCast Message": "public/js/send_broadcast_message.js"
 }
 
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
@@ -158,17 +159,17 @@ doctype_js = {
 # ---------------
 # Hook on document methods and events
 doc_events = {
-    # "Sales Order": {
-    #     "on_submit": [
-    #         # "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_order_confirmation",
-    #         # "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_sales_order.send_sales_order_background",
-    #         "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_message_template_sales_order.on_sales_order_submit"
+    "Sales Order": {
+        "on_submit": [
+            # "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_order_confirmation",
+            # "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_sales_order.send_sales_order_background",
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_message_template_sales_order.on_sales_order_submit"
            
-    #         ],
-    # #     "Sales Order": {
-    # #         "on_update_after_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.notifications_on_dispacth.send_dispatch_notification",
-    # # }
-    # },
+            ],
+    #     "Sales Order": {
+    #         "on_update_after_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.notifications_on_dispacth.send_dispatch_notification",
+    # }
+    },
     # "Sales Invoice": {
     #     "on_submit": [
     #         "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_invoice_notification",
