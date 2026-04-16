@@ -6,6 +6,69 @@ import os
 from frappe import _
 
 
+def _normalize_template_key(value):
+    return (value or "").strip().lower()
+
+
+def _normalize_phone(value):
+    if not value:
+        return ""
+    return re.sub(r"\D", "", str(value))
+
+
+def _collect_customer_recipient_numbers(customer_doc):
+    numbers = []
+    seen = set()
+
+    primary_phone = getattr(customer_doc, "whatsapp_number", None)
+    primary_key = _normalize_phone(primary_phone)
+    if primary_key and primary_key not in seen:
+        numbers.append(str(primary_phone).strip())
+        seen.add(primary_key)
+
+    for row in getattr(customer_doc, "custom_contacts", []) or []:
+        phone_number = getattr(row, "phone_number", None)
+        phone_key = _normalize_phone(phone_number)
+        if phone_key and phone_key not in seen:
+            numbers.append(str(phone_number).strip())
+            seen.add(phone_key)
+
+    return numbers
+
+
+def _get_approved_template_doc(template_key):
+    """
+    Resolve template by either `name` or `template_name`, but only approved ones.
+    """
+    target = _normalize_template_key(template_key)
+    if not target:
+        return None
+
+    templates = frappe.get_all(
+        "Whatsapp Message Template",
+        fields=[
+            "name",
+            "template_name",
+            "status",
+            "language",
+            "format",
+            "body_text",
+            "media_example",
+            "footer_text",
+        ],
+        filters={"status": ["in", ["Approved", "APPROVED"]]},
+        limit_page_length=0,
+    )
+
+    for tpl in templates:
+        name_key = _normalize_template_key(tpl.get("name"))
+        template_name_key = _normalize_template_key(tpl.get("template_name"))
+        if target in {name_key, template_name_key}:
+            return tpl
+
+    return None
+
+
 @frappe.whitelist()
 def send_whatsapp_template_message(phone, template_name, parameters=None, customer=None, document_url=None):
 
@@ -17,19 +80,11 @@ def send_whatsapp_template_message(phone, template_name, parameters=None, custom
     if not ACCESS_TOKEN or not PHONE_NUMBER_ID:
         frappe.throw("Missing Access Token or Phone Number ID in WhatsApp Settings")
     
-    # Load template to get component structure
-    template = frappe.db.get_value(
-        "Whatsapp Message Template",
-        {"template_name": template_name},
-        ["name", "template_name", "status", "language", "format", "body_text", "media_example", "footer_text"],
-        as_dict=1
-    )
-    
+    # Load approved template to get component structure
+    template = _get_approved_template_doc(template_name)
+
     if not template:
-        frappe.throw(f"Template '{template_name}' not found")
-    
-    if template.status != "Approved":
-        frappe.throw(f"Template '{template_name}' is not approved yet. Status: {template.status}")
+        frappe.throw(f"Approved template '{template_name}' not found")
     
     # Clean phone number and format properly
     phone = phone.strip().replace(" ", "").replace("-", "")
@@ -235,12 +290,14 @@ def send_sales_order_whatsapp_async(doc_name):
     try:
         doc = frappe.get_doc("Sales Order", doc_name)
         
-        # Get customer's phone number
         customer = frappe.get_doc("Customer", doc.customer)
-        phone = customer.whatsapp_number
-        
-        if not phone:
-            frappe.log_error(f"No WhatsApp number found for {customer.customer_name}", "Sales Order WhatsApp")
+        recipient_numbers = _collect_customer_recipient_numbers(customer)
+
+        if not recipient_numbers:
+            frappe.log_error(
+                f"No WhatsApp recipient numbers found for {customer.customer_name}",
+                "Sales Order WhatsApp",
+            )
             return
         
         # Template name for sales orders
@@ -296,33 +353,64 @@ def send_sales_order_whatsapp_async(doc_name):
             frappe.log_error(f"Failed to generate PDF: {str(e)}", "Sales Order PDF Generation")
             # Continue without PDF
         
-        # Send WhatsApp message
-        result = send_whatsapp_template_message(
-            phone=phone,
-            template_name=template_name,
-            parameters=parameters,
-            customer=doc.customer,
-            document_url=document_url
-        )
-        
-        if result.get("success"):
-            frappe.log_error(f"WhatsApp order confirmation sent successfully to {customer.customer_name} for {doc.name}", "Sales Order WhatsApp Success")
-        else:
-            frappe.log_error(f"Failed to send WhatsApp: {result.get('error')}", "Sales Order WhatsApp")
+        # Send WhatsApp message to all recipients (main customer + child table numbers)
+        success_count = 0
+        failed = []
+        for recipient in recipient_numbers:
+            result = send_whatsapp_template_message(
+                phone=recipient,
+                template_name=template_name,
+                parameters=parameters,
+                customer=doc.customer,
+                document_url=document_url
+            )
+
+            if result.get("success"):
+                success_count += 1
+            else:
+                failed.append(f"{recipient}: {result.get('error')}")
+
+        if success_count:
+            frappe.log_error(
+                f"WhatsApp order confirmation sent to {success_count}/{len(recipient_numbers)} recipients for {doc.name}",
+                "Sales Order WhatsApp Success",
+            )
+        if failed:
+            frappe.log_error(
+                "Failed recipients:\n" + "\n".join(failed),
+                "Sales Order WhatsApp",
+            )
             
     except Exception as e:
         frappe.log_error(f"WhatsApp Send Failed: {str(e)}", "Sales Order WhatsApp")
 
 
-def on_sales_order_submit(doc, method):
+def on_sales_order_workflow_change(doc, method=None):
+    """
+    Trigger WhatsApp notification only when workflow transitions to Approved.
+    Expected transition: Pending Credit Approval -> Approved
+    """
+    current_state = (getattr(doc, "workflow_state", None) or "").strip()
+    if current_state != "Approved":
+        return
 
-    # Get customer's phone number
+    previous_state = None
+    try:
+        previous_doc = doc.get_doc_before_save()
+        previous_state = ((getattr(previous_doc, "workflow_state", None) or "").strip() if previous_doc else None)
+    except Exception:
+        previous_state = None
+
+    # Strict trigger: only send for Pending Credit Approval -> Approved
+    if previous_state != "Pending Credit Approval":
+        return
+
     customer = frappe.get_doc("Customer", doc.customer)
-    phone = customer.whatsapp_number
-    
-    if not phone:
+    recipient_numbers = _collect_customer_recipient_numbers(customer)
+
+    if not recipient_numbers:
         frappe.msgprint(
-            _("No WhatsApp number found for {0}. Message will not be sent.").format(customer.customer_name),
+            _("No WhatsApp recipient numbers found for {0}. Message will not be sent.").format(customer.customer_name),
             indicator="orange",
             alert=True
         )
@@ -336,7 +424,7 @@ def on_sales_order_submit(doc, method):
     
     if not template_exists:
         frappe.msgprint(
-            _("WhatsApp template 'order_confirmations' not found or not approved. Message will not be sent."),
+            _("WhatsApp template 'order_confirmationzz' not found or not approved. Message will not be sent."),
             indicator="orange",
             alert=True
         )
@@ -353,7 +441,12 @@ def on_sales_order_submit(doc, method):
     )
     
     frappe.msgprint(
-        _("Sales Order submitted. WhatsApp message will be sent shortly."),
+        _("Sales Order approved. WhatsApp message will be sent shortly."),
         indicator="blue",
         alert=True
     )
+
+
+# Backward compatibility for any older direct references
+def on_sales_order_submit(doc, method):
+    return on_sales_order_workflow_change(doc, method)

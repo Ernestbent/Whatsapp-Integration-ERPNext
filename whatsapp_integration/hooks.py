@@ -160,15 +160,10 @@ doctype_js = {
 # Hook on document methods and events
 doc_events = {
     "Sales Order": {
-        "on_submit": [
-            # "whatsapp_integration.erpnext_whatsapp.custom_scripts.whatsapp_api.send_order_confirmation",
-            # "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_sales_order.send_sales_order_background",
-            "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_message_template_sales_order.on_sales_order_submit"
-           
-            ],
-    #     "Sales Order": {
-    #         "on_update_after_submit": "whatsapp_integration.erpnext_whatsapp.custom_scripts.notifications_on_dispacth.send_dispatch_notification",
-    # }
+        "on_update_after_submit": [
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_message_template_sales_order.on_sales_order_workflow_change",
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_message_template_in_transit.on_sales_order_in_transit"
+        ],
     },
     # "Sales Invoice": {
     #     "on_submit": [
@@ -293,5 +288,3 @@ fixtures = [
 ]
 
 csrf_exempt = ["/api/method/whatsapp_integration.whatsapp_webhook.receive_whatsapp"]
-
-
