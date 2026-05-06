@@ -566,6 +566,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
     let selected_file = null;
     let temp_file_url = null;
     let customer_name_cache = {};
+    let recipient_name_cache = {};
     let realtime_subscribed = false;
     let user_at_bottom = true;
     let message_cache = {};
@@ -574,6 +575,8 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
     let status_sync_interval = null;
     let reconnect_attempts = 0;
     const MAX_RECONNECT_ATTEMPTS = 5;
+    const SIM_QUEUE_KEY = "wa_sim_broadcast_queue";
+    const SIM_MESSAGES_KEY = "wa_sim_messages_by_contact";
     let connection_status = 'disconnected';
     let refresh_conversations_timeout;
 
@@ -730,13 +733,32 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         return `+${clean}`;
     }
 
+    function normalize_phone_number(phone_number) {
+        return (phone_number || '').toString().replace(/\D/g, '');
+    }
+
     function get_preview_text(messageText, fallback = "No message") {
         const text = (messageText || '').trim();
         return text ? text.substring(0, 45) + (text.length > 45 ? "..." : "") : fallback;
     }
 
     function get_display_name(contactNumber, customerName = null) {
-        return customerName || customer_name_cache[contactNumber] || format_phone_display(contactNumber);
+        const normalized = normalize_phone_number(contactNumber);
+        return recipient_name_cache[normalized] || customerName || customer_name_cache[contactNumber] || format_phone_display(contactNumber);
+    }
+
+    function load_recipient_name_cache(callback = null) {
+        frappe.call({
+            method: "whatsapp_integration.erpnext_whatsapp.custom_scripts.api_fetch_message.get_recipient_name_map",
+            callback(r) {
+                recipient_name_cache = r.message || {};
+                if (typeof callback === 'function') callback();
+            },
+            error() {
+                recipient_name_cache = {};
+                if (typeof callback === 'function') callback();
+            }
+        });
     }
 
     function bind_chat_list_events() {
@@ -1234,7 +1256,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                     const msg = convMap[key];
 
                     // Use customer_name from linked Customer, fallback to phone
-                    const displayName = msg.customer_name || format_phone_display(msg.from_number);
+                    const displayName = get_display_name(msg.from_number, msg.customer_name);
                     customer_name_cache[key] = displayName;
 
                     const preview  = (msg.message || "").substring(0, 45) + (msg.message.length > 45 ? "..." : "");
@@ -1292,10 +1314,83 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
 
         if (message_cache[contact_number]) {
             $("#wa-messages-area").html(message_cache[contact_number]);
+            append_simulated_messages_to_active_chat(contact_number);
             scrollToBottomDelayed();
         } else {
             $("#wa-messages-area").html('');
+            append_simulated_messages_to_active_chat(contact_number);
         }
+    }
+
+    function get_simulated_messages_map() {
+        try {
+            return JSON.parse(localStorage.getItem(SIM_MESSAGES_KEY) || "{}");
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function append_simulated_messages_to_active_chat(contact_number) {
+        const msgMap = get_simulated_messages_map();
+        const rows = msgMap[contact_number] || [];
+        if (!rows.length) return;
+
+        rows.forEach((msg) => {
+            const textHtml = frappe.utils.escape_html(msg.text || "").replace(/\n/g, "<br>");
+            const imageList = (msg.image_data_urls || []).filter(Boolean);
+            const fallbackList = imageList.length ? imageList : (msg.image_data_url ? [msg.image_data_url] : []);
+            const mediaHtml = fallbackList.map((url) =>
+                `<div class="wa-media-container"><img src="${url}" alt="Broadcast image" /></div>`
+            ).join("");
+            const html = `<div class="wa-message outgoing wa-sim-broadcast" data-sim-id="${frappe.utils.escape_html(msg.id || '')}">
+                            <div class="wa-message-content">
+                                ${mediaHtml}
+                                ${textHtml ? `<div class="wa-message-text">${textHtml}</div>` : ""}
+                                <div class="wa-message-footer">
+                                    <span>${format_timestamp(msg.time || '') || 'now'}</span>${get_whatsapp_ticks("Outgoing", 1, "sent")}
+                                </div>
+                            </div>
+                        </div>`;
+            $("#wa-messages-area").append(html);
+        });
+    }
+
+    function consume_simulated_broadcast_queue() {
+        let jobs = [];
+        try {
+            jobs = JSON.parse(localStorage.getItem(SIM_QUEUE_KEY) || "[]");
+        } catch (e) {
+            jobs = [];
+        }
+        if (!jobs.length) return;
+
+        const msgMap = get_simulated_messages_map();
+        jobs.forEach((job) => {
+            const recipients = job.recipients || [];
+            recipients.forEach((recipient) => {
+                if (!msgMap[recipient.contact]) msgMap[recipient.contact] = [];
+                msgMap[recipient.contact].push({
+                    id: `${job.id}-${recipient.contact}`,
+                    text: job.message || "",
+                    image_data_urls: job.image_data_urls || [],
+                    image_data_url: job.image_data_url || "",
+                    time: job.time || ""
+                });
+
+                update_sidebar_conversation({
+                    contact_number: recipient.contact,
+                    customer: recipient.customer_name || recipient.contact,
+                    message_text: job.message || ((job.image_data_urls || []).length || job.image_data_url ? "Broadcast images" : "Broadcast message"),
+                    message_status: "sent",
+                    custom_status: "Outgoing",
+                    unread: 0,
+                    timestamp: job.iso_timestamp || new Date().toISOString()
+                });
+            });
+        });
+
+        localStorage.setItem(SIM_MESSAGES_KEY, JSON.stringify(msgMap));
+        localStorage.removeItem(SIM_QUEUE_KEY);
     }
 
     function load_messages(contact_number, forceRefresh = false) {
@@ -1371,6 +1466,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                         $("#wa-empty-state").hide();
                         if (hasChanged || $("#wa-messages-area").html() !== html) {
                             $("#wa-messages-area").html(html);
+                            append_simulated_messages_to_active_chat(contact_number);
                             scrollToBottomDelayed();
                         }
                         sync_sidebar_with_chat_panel(contact_number);
@@ -1609,10 +1705,11 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
 
     // Initialization
     function initialize() {
+        consume_simulated_broadcast_queue();
         init_emoji_picker();
         init_attachment();
         setup_event_listeners();
-        load_conversations();
+        load_recipient_name_cache(() => load_conversations());
         start_sync_loops();
         setTimeout(() => scrollToBottom(true), 100);
     }
@@ -1639,7 +1736,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) return;
 
-            load_conversations();
+            load_recipient_name_cache(() => load_conversations());
             if (active_contact) {
                 load_messages(active_contact, true);
             }

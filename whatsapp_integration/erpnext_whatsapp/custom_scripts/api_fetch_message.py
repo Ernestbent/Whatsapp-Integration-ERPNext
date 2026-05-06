@@ -69,3 +69,27 @@ def get_chat_messages(contact):
         '''
     html += '</div>'
     return html
+
+
+@frappe.whitelist()
+def get_recipient_name_map():
+    """
+    Return phone -> contact_name map from Customer Receipients child table.
+    Uses get_all to avoid client-side permission issues on child doctype.
+    """
+    rows = frappe.get_all(
+        "Customer Receipients",
+        fields=["contact_name", "phone_number", "parent"],
+        filters={"phone_number": ["!=", ""]},
+        limit_page_length=0,
+    )
+
+    mapping = {}
+    for row in rows or []:
+        phone = "".join(ch for ch in (row.get("phone_number") or "") if ch.isdigit())
+        if not phone:
+            continue
+        if phone not in mapping:
+            mapping[phone] = row.get("contact_name") or row.get("parent")
+
+    return mapping
