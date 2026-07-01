@@ -1,3 +1,5 @@
+const WHATSAPP_ICON_URL = "/assets/whatsapp_integration/img/whatsapp-icon.svg";
+
 (function() {
     add_whatsapp_icon();
 })();
@@ -209,6 +211,37 @@ function inject_responsive_styles() {
                 background: #f0fdf4 !important;
             }
 
+            .whatsapp-icon-wrap {
+                --whatsapp-icon-size: 22px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: var(--whatsapp-icon-size);
+                height: var(--whatsapp-icon-size);
+                vertical-align: middle;
+            }
+
+            .whatsapp-svg-icon {
+                display: inline-block;
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+            }
+
+            .whatsapp-icon-fallback {
+                display: none;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                background: #25D366;
+                color: #fff;
+                font-size: 9px;
+                font-weight: 700;
+                line-height: 1;
+            }
+
             @media (max-width: 1024px) and (min-width: 769px) {
                 .whatsapp-dropdown {
                     min-width: 340px;
@@ -254,8 +287,8 @@ function inject_responsive_styles() {
                     margin-left: 6px;
                     margin-right: 6px;
                 }
-                .whatsapp-icon-container .fa-whatsapp {
-                    font-size: 20px !important;
+                .whatsapp-icon-container .whatsapp-icon-wrap {
+                    --whatsapp-icon-size: 20px !important;
                 }
                 .whatsapp-count-badge {
                     top: -8px !important;
@@ -352,6 +385,16 @@ function inject_responsive_styles() {
     $('head').append(styles);
 }
 
+function whatsapp_icon_markup(size = 22, class_name = "", style = "") {
+    return `
+        <span class="whatsapp-icon-wrap ${class_name}" style="--whatsapp-icon-size: ${size}px; ${style}">
+            <span class="whatsapp-icon-fallback">WA</span>
+            <img class="whatsapp-svg-icon" src="${WHATSAPP_ICON_URL}" alt="" aria-hidden="true"
+                 onerror="this.style.display='none'; this.previousElementSibling.style.display='inline-flex';">
+        </span>
+    `;
+}
+
 // WhatsApp Icon Injection
 function add_whatsapp_icon() {
     // Wait until frappe.user_roles is populated
@@ -384,7 +427,7 @@ function add_whatsapp_icon() {
         <li class="nav-item dropdown dropdown-mobile whatsapp-icon-container">
             <a class="nav-link" href="#" data-toggle="dropdown" title="WhatsApp Messages">
                 <span style="position: relative; display: inline-block;">
-                    <i class="fa fa-whatsapp" style="font-size: 22px; color: #25D366;"></i>
+                    ${whatsapp_icon_markup(22)}
                     <span class="badge badge-danger whatsapp-count-badge"
                           style="position: absolute; top: -10px; right: -10px; display: none;
                                  background: #dc3545; color: white; border-radius: 50%; width: 20px; height: 20px;
@@ -396,7 +439,7 @@ function add_whatsapp_icon() {
             <div class="dropdown-menu dropdown-menu-right whatsapp-dropdown shadow-lg border-0">
                 <div style="padding: 14px 18px; background: #f8f9fa; border-bottom: 1px solid #eee; font-weight: 600; font-size: 15px; display: flex; justify-content: space-between; align-items: center;">
                     <span>
-                        <i class="fa fa-whatsapp" style="color: #25D366; margin-right: 8px;"></i>
+                        ${whatsapp_icon_markup(18, "", "margin-right: 8px;")}
                         WhatsApp Messages
                     </span>
                     <button class="whatsapp-close-btn" style="display: none; background: none; border: none; font-size: 24px; color: #666; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
@@ -541,7 +584,7 @@ function update_whatsapp_notifications() {
                 custom_status: "Incoming",
                 custom_read: 0
             },
-            fields: ["name", "from_number", "customer", "message", "creation", "timestamp"],
+            fields: ["name", "from_number", "customer", "customer.customer_name as customer_name", "custom_user", "custom_user.first_name as user_first_name", "message", "creation", "timestamp"],
             order_by: "creation desc",
             limit_page_length: 100
         },
@@ -574,56 +617,88 @@ function format_phone_display(phone_number) {
     return `+${clean}`;
 }
 
-// Enrich messages with customer names and render
+// Enrich messages with customer/user names and render
 function enrich_and_render_messages(messages) {
     if (!messages || messages.length === 0) {
         render_whatsapp_messages([]);
         return;
     }
 
-    const customers = [...new Set(messages.filter(m => m.customer).map(m => m.customer))];
-
-    if (customers.length === 0) {
+    const apply_display_names = (customer_map, user_map = {}) => {
         messages.forEach(msg => {
-            msg.display_name = format_phone_display(msg.from_number);
-            msg.has_customer = false;
-        });
-        render_whatsapp_messages(messages);
-        return;
-    }
-
-    frappe.call({
-        method: "frappe.client.get_list",
-        args: {
-            doctype: "Customer",
-            filters: [["name", "in", customers]],
-            fields: ["name", "customer_name"]
-        },
-        callback: r => {
-            const customer_map = {};
-            (r.message || []).forEach(c => {
-                customer_map[c.name] = c.customer_name;
-            });
-
-            messages.forEach(msg => {
-                if (msg.customer && customer_map[msg.customer]) {
-                    msg.display_name = customer_map[msg.customer];
-                    msg.has_customer = true;
-                } else {
-                    msg.display_name = format_phone_display(msg.from_number);
-                    msg.has_customer = false;
-                }
-            });
-
-            render_whatsapp_messages(messages);
-        },
-        error: () => {
-            messages.forEach(msg => {
+            const user_name = msg.user_first_name || user_map[msg.custom_user];
+            if (user_name) {
+                msg.display_name = user_name;
+                msg.has_customer = false;
+            } else if (msg.customer && customer_map[msg.customer]) {
+                msg.display_name = customer_map[msg.customer];
+                msg.has_customer = true;
+            } else if (msg.customer_name) {
+                msg.display_name = msg.customer_name;
+                msg.has_customer = true;
+            } else {
                 msg.display_name = format_phone_display(msg.from_number);
                 msg.has_customer = false;
-            });
-            render_whatsapp_messages(messages);
+            }
+        });
+        render_whatsapp_messages(messages);
+    };
+
+    const customers = [...new Set(messages.filter(m => m.customer).map(m => m.customer))];
+    const users = [...new Set(messages.filter(m => m.custom_user && !m.user_first_name).map(m => m.custom_user))];
+
+    const load_customers = callback => {
+        if (customers.length === 0) {
+            callback({});
+            return;
         }
+
+        frappe.call({
+            method: "frappe.client.get_list",
+            args: {
+                doctype: "Customer",
+                filters: [["name", "in", customers]],
+                fields: ["name", "customer_name"]
+            },
+            callback: r => {
+                const customer_map = {};
+                (r.message || []).forEach(c => {
+                    customer_map[c.name] = c.customer_name;
+                });
+                callback(customer_map);
+            },
+            error: () => callback({})
+        });
+    };
+
+    const load_users = callback => {
+        if (users.length === 0) {
+            callback({});
+            return;
+        }
+
+        frappe.call({
+            method: "frappe.client.get_list",
+            args: {
+                doctype: "User",
+                filters: [["name", "in", users]],
+                fields: ["name", "first_name", "full_name"]
+            },
+            callback: r => {
+                const user_map = {};
+                (r.message || []).forEach(u => {
+                    user_map[u.name] = u.first_name || u.full_name || u.name;
+                });
+                callback(user_map);
+            },
+            error: () => callback({})
+        });
+    };
+
+    load_customers(customer_map => {
+        load_users(user_map => {
+            apply_display_names(customer_map, user_map);
+        });
     });
 }
 
@@ -632,7 +707,7 @@ function render_whatsapp_messages(messages) {
     const container = $('.whatsapp-messages-container');
     if (!messages || messages.length === 0) {
         container.html(`<div class="text-center text-muted py-5">
-            <i class="fa fa-whatsapp fa-4x mb-3" style="color:#25D366; opacity:0.3;"></i>
+            ${whatsapp_icon_markup(64, "mb-3", "opacity: 0.3;")}
             <p>No unread messages</p>
         </div>`);
         return;

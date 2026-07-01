@@ -742,9 +742,9 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         return text ? text.substring(0, 45) + (text.length > 45 ? "..." : "") : fallback;
     }
 
-    function get_display_name(contactNumber, customerName = null) {
+    function get_display_name(contactNumber, customerName = null, userFirstName = null) {
         const normalized = normalize_phone_number(contactNumber);
-        return recipient_name_cache[normalized] || customerName || customer_name_cache[contactNumber] || format_phone_display(contactNumber);
+        return userFirstName || recipient_name_cache[normalized] || customerName || customer_name_cache[contactNumber] || format_phone_display(contactNumber);
     }
 
     function load_recipient_name_cache(callback = null) {
@@ -1229,7 +1229,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             method: "frappe.client.get_list",
             args: {
                 doctype: "Whatsapp Message",
-                fields: ["name", "customer", "customer.customer_name as customer_name", "from_number", "message", "creation", "custom_status", "custom_read", "message_status"],
+                fields: ["name", "customer", "customer.customer_name as customer_name", "custom_user", "custom_user.first_name as user_first_name", "from_number", "message", "creation", "custom_status", "custom_read", "message_status"],
                 filters: [["message", "!=", ""]],
                 order_by: "creation desc",
                 limit_page_length: 500
@@ -1255,8 +1255,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 Object.keys(convMap).forEach(key => {
                     const msg = convMap[key];
 
-                    // Use customer_name from linked Customer, fallback to phone
-                    const displayName = get_display_name(msg.from_number, msg.customer_name);
+                    const displayName = get_display_name(msg.from_number, msg.customer_name, msg.user_first_name);
                     customer_name_cache[key] = displayName;
 
                     const preview  = (msg.message || "").substring(0, 45) + (msg.message.length > 45 ? "..." : "");
