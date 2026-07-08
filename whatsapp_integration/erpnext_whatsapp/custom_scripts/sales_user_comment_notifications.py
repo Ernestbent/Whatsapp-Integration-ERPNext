@@ -214,7 +214,7 @@ def _build_template_values(comment_doc, sales_order):
 
 
 def _build_button_value(sales_order):
-    return _get_sales_order_url(sales_order.name)
+    return (sales_order.name or "").strip()
 
 
 def _render_message(values):
