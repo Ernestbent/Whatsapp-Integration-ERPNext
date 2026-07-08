@@ -9,6 +9,7 @@ ALLOWED_CREDIT_CONTROLLER_EMAILS = {
     "ernestben69@gmail.com",
     "admin@autozonepro.org",
     "developer@autozonepro.org",
+    "outstanding@autozonepro.org"
 }
 ADDITIONAL_COMMENT_NOTIFICATION_NUMBERS = {
     "+256 755 829642",
@@ -27,6 +28,8 @@ TEMPLATE_BODY = (
 )
 TEMPLATE_FOOTER = "Autozone Professional Limited"
 TEMPLATE_PARAMETER_ORDER = ["user", "sales_order_number", "customer", "text"]
+TEMPLATE_BUTTON_INDEX = "0"
+SALES_ORDER_URL_BASE = "https://accounting.autozonepro.org/app/sales-order"
 
 
 def _normalize_email(email):
@@ -176,12 +179,29 @@ def _log_whatsapp_error(title, message, payload=None, response=None, exc=None):
     frappe.log_error(title=(title or "Sales User Comment WhatsApp")[:140], message="\n\n".join(parts))
 
 
+def _get_sales_order_url(sales_order_name):
+    sales_order_name = (sales_order_name or "").strip()
+    return f"{SALES_ORDER_URL_BASE}/{sales_order_name}" if sales_order_name else SALES_ORDER_URL_BASE
+
+
 def _get_trimmed_comment_text(comment_doc):
     comment_text = _strip_comment_html(comment_doc.content)
     if len(comment_text) > 900:
         comment_text = comment_text[:897] + "..."
 
     return comment_text
+
+
+def _build_logged_comment_text(comment_doc, sales_order):
+    sales_order_url = _get_sales_order_url(sales_order.name)
+    link_suffix = f"\n\nSales Order Link:\n{sales_order_url}"
+    max_comment_length = max(0, 900 - len(link_suffix))
+
+    comment_text = _strip_comment_html(comment_doc.content)
+    if len(comment_text) > max_comment_length:
+        comment_text = comment_text[: max(0, max_comment_length - 3)] + "..."
+
+    return f"{comment_text}{link_suffix}"
 
 
 def _build_template_values(comment_doc, sales_order):
@@ -193,6 +213,10 @@ def _build_template_values(comment_doc, sales_order):
     }
 
 
+def _build_button_value(sales_order):
+    return _get_sales_order_url(sales_order.name)
+
+
 def _render_message(values):
     message = TEMPLATE_BODY
     for key, value in values.items():
@@ -201,7 +225,13 @@ def _render_message(values):
     return f"{message}\n\n{TEMPLATE_FOOTER}"
 
 
-def _send_template(phone, values, recipient_user=None, recipient_name=None):
+def _build_log_message(values, comment_doc, sales_order):
+    log_values = dict(values)
+    log_values["text"] = _build_logged_comment_text(comment_doc, sales_order)
+    return _render_message(log_values)
+
+
+def _send_template(phone, values, comment_doc, sales_order, recipient_user=None, recipient_name=None):
     settings = frappe.get_single("Whatsapp Setting")
     access_token = settings.get_password("access_token") or settings.get("access_token")
     phone_number_id = settings.get("phone_number_id")
@@ -231,7 +261,18 @@ def _send_template(phone, values, recipient_user=None, recipient_name=None):
                         }
                         for key in TEMPLATE_PARAMETER_ORDER
                     ],
-                }
+                },
+                {
+                    "type": "button",
+                    "sub_type": "url",
+                    "index": TEMPLATE_BUTTON_INDEX,
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": _build_button_value(sales_order),
+                        }
+                    ],
+                },
             ],
         },
     }
@@ -254,7 +295,7 @@ def _send_template(phone, values, recipient_user=None, recipient_name=None):
                 "doctype": "Whatsapp Message",
                 "from_number": phone,
                 "message_type": "template",
-                "message": f"To: {recipient_name or phone}\n\n{_render_message(values)}",
+                "message": _build_log_message(values, comment_doc, sales_order),
                 "message_status": "sent",
                 "message_id": message_id,
                 "timestamp": frappe.utils.now_datetime().strftime("%H:%M:%S"),
@@ -314,6 +355,8 @@ def _send_sales_user_comment_notifications(comment_name):
             result = _send_template(
                 phone=recipient.whatsapp_recipient_number,
                 values=values,
+                comment_doc=comment_doc,
+                sales_order=sales_order,
                 recipient_user=None if getattr(recipient, "is_additional_recipient", False) else recipient.name,
                 recipient_name=recipient.full_name or recipient.name,
             )

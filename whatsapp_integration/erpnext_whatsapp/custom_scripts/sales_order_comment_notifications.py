@@ -9,6 +9,7 @@ ALLOWED_CREDIT_CONTROLLER_EMAILS = {
     "ernestben69@gmail.com",
     "admin@autozonepro.org",
     "developer@autozonepro.org",
+    "outstanding@autozonepro.org"
 }
 ADDITIONAL_COMMENT_NOTIFICATION_NUMBERS = {
     "+256 755 829642",
@@ -17,6 +18,8 @@ ADDITIONAL_COMMENT_NOTIFICATION_NUMBERS = {
 CREDIT_CONTROLLER_ROLE = "Credit Controller"
 CREDIT_CONTROLLER_COMMENT_TEMPLATE_NAME = "comment_from_credit_controller"
 CREDIT_CONTROLLER_COMMENT_TEMPLATE_LANGUAGE = "en"
+CREDIT_CONTROLLER_COMMENT_TEMPLATE_BUTTON_INDEX = "0"
+SALES_ORDER_URL_BASE = "https://accounting.autozonepro.org/app/sales-order"
 CREDIT_CONTROLLER_COMMENT_TEMPLATE_BODY = (
     "A new comment has been added to your Sales Order.\n\n"
     "Sales Order: {{1}}\n"
@@ -181,12 +184,29 @@ def _log_whatsapp_error(title, message, payload=None, response=None, exc=None):
     frappe.log_error(title=(title or "Sales Order Comment WhatsApp")[:140], message="\n\n".join(parts))
 
 
+def _get_sales_order_url(sales_order_name):
+    sales_order_name = (sales_order_name or "").strip()
+    return f"{SALES_ORDER_URL_BASE}/{sales_order_name}" if sales_order_name else SALES_ORDER_URL_BASE
+
+
 def _get_trimmed_comment_text(comment_doc):
     comment_text = _strip_comment_html(comment_doc.content)
     if len(comment_text) > 900:
         comment_text = comment_text[:897] + "..."
 
     return comment_text
+
+
+def _build_logged_comment_text(comment_doc, sales_order):
+    sales_order_url = _get_sales_order_url(sales_order.name)
+    link_suffix = f"\n\nSales Order Link:\n{sales_order_url}"
+    max_comment_length = max(0, 900 - len(link_suffix))
+
+    comment_text = _strip_comment_html(comment_doc.content)
+    if len(comment_text) > max_comment_length:
+        comment_text = comment_text[: max(0, max_comment_length - 3)] + "..."
+
+    return f"{comment_text}{link_suffix}"
 
 
 def _build_credit_controller_template_values(comment_doc, sales_order):
@@ -200,6 +220,10 @@ def _build_credit_controller_template_values(comment_doc, sales_order):
     ]
 
 
+def _build_button_value(sales_order):
+    return _get_sales_order_url(sales_order.name)
+
+
 def _render_credit_controller_message(values):
     message = CREDIT_CONTROLLER_COMMENT_TEMPLATE_BODY
     for index, value in enumerate(values, start=1):
@@ -207,7 +231,13 @@ def _render_credit_controller_message(values):
     return message
 
 
-def _send_credit_controller_comment_template(phone, values, recipient_user=None, recipient_name=None):
+def _build_credit_controller_log_values(values, comment_doc, sales_order):
+    log_values = list(values)
+    log_values[3] = _build_logged_comment_text(comment_doc, sales_order)
+    return log_values
+
+
+def _send_credit_controller_comment_template(phone, values, comment_doc, sales_order, recipient_user=None, recipient_name=None):
     settings = frappe.get_single("Whatsapp Setting")
     access_token = settings.get_password("access_token") or settings.get("access_token")
     phone_number_id = settings.get("phone_number_id")
@@ -230,7 +260,18 @@ def _send_credit_controller_comment_template(phone, values, recipient_user=None,
                 {
                     "type": "body",
                     "parameters": [{"type": "text", "text": str(value or "")} for value in values],
-                }
+                },
+                {
+                    "type": "button",
+                    "sub_type": "url",
+                    "index": CREDIT_CONTROLLER_COMMENT_TEMPLATE_BUTTON_INDEX,
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": _build_button_value(sales_order),
+                        }
+                    ],
+                },
             ],
         },
     }
@@ -253,7 +294,9 @@ def _send_credit_controller_comment_template(phone, values, recipient_user=None,
                 "doctype": "Whatsapp Message",
                 "from_number": phone,
                 "message_type": "template",
-                "message": f"To: {recipient_name or phone}\n\n{_render_credit_controller_message(values)}",
+                "message": _render_credit_controller_message(
+                    _build_credit_controller_log_values(values, comment_doc, sales_order)
+                ),
                 "message_status": "sent",
                 "message_id": message_id,
                 "timestamp": frappe.utils.now_datetime().strftime("%H:%M:%S"),
@@ -317,6 +360,8 @@ def _send_sales_order_comment_notifications(comment_name):
             result = _send_credit_controller_comment_template(
                 phone=recipient.whatsapp_recipient_number,
                 values=values,
+                comment_doc=comment_doc,
+                sales_order=sales_order,
                 recipient_user=None if getattr(recipient, "is_additional_recipient", False) else recipient.name,
                 recipient_name=recipient.full_name or recipient.name,
             )

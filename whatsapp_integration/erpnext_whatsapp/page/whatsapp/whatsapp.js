@@ -207,6 +207,14 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 margin-bottom: 5px;
                 line-height: 1.4;
             }
+            .wa-message-link {
+                color: #0b6bcb;
+                text-decoration: underline;
+                word-break: break-all;
+            }
+            .wa-message-link:hover {
+                color: #084f97;
+            }
             .wa-message-footer {
                 display: flex;
                 align-items: center;
@@ -944,13 +952,36 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         });
     }
 
+    function render_message_text(text, extraClass = "wa-message-text", inlineStyle = "") {
+        const content = String(text || "");
+        const parts = content.split(/(https?:\/\/[^\s<]+)/gi);
+        const safeHtml = parts.map((part) => {
+            if (!part) return "";
+
+            if (/^https?:\/\//i.test(part)) {
+                const match = part.match(/^(.*?)([),.;!?]+)?$/);
+                const rawUrl = match && match[1] ? match[1] : part;
+                const trailing = match && match[2] ? match[2] : "";
+                const safeUrl = frappe.utils.escape_html(rawUrl);
+                const safeTrailing = frappe.utils.escape_html(trailing);
+
+                return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="wa-message-link">${safeUrl}</a>${safeTrailing}`;
+            }
+
+            return frappe.utils.escape_html(part);
+        }).join("");
+
+        const styleAttr = inlineStyle ? ` style="${inlineStyle}"` : "";
+        return `<div class="${extraClass}"${styleAttr}>${safeHtml.replace(/\n/g, "<br>")}</div>`;
+    }
+
     function render_media_content(message) {
         const type = message.message_type;
         const file_url = message.custom_document;
         const message_text = message.message;
 
         if (!file_url) {
-            return `<div class="wa-message-text">${frappe.utils.escape_html(message_text||'').replace(/\n/g,"<br>")}</div>`;
+            return render_message_text(message_text);
         }
 
         const isPDFFile = file_url.toLowerCase().endsWith('.pdf');
@@ -971,7 +1002,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
 
             let captionText = '';
             if (message_text && !message_text.startsWith('Document: ') && !message_text.startsWith('PDF: ')) {
-                captionText = `<div class="wa-message-text" style="margin-top: 8px;">${frappe.utils.escape_html(message_text).replace(/\n/g,"<br>")}</div>`;
+                captionText = render_message_text(message_text, "wa-message-text", "margin-top: 8px;");
             }
 
             return `
@@ -995,11 +1026,11 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         switch(type) {
             case 'image':
                 const safeImageUrl = frappe.utils.escape_html(file_url);
-                return `<div class="wa-media-container"><img src="${safeImageUrl}" alt="Image" onload="if(window.scrollAfterLoad) window.scrollAfterLoad()" onclick="open_lightbox('${safeImageUrl}', 'image')" />${message_text && !message_text.startsWith('Image:') ? `<div class="wa-media-caption">${frappe.utils.escape_html(message_text).replace(/\n/g,"<br>")}</div>` : ''}</div>`;
+                return `<div class="wa-media-container"><img src="${safeImageUrl}" alt="Image" onload="if(window.scrollAfterLoad) window.scrollAfterLoad()" onclick="open_lightbox('${safeImageUrl}', 'image')" />${message_text && !message_text.startsWith('Image:') ? render_message_text(message_text, 'wa-media-caption') : ''}</div>`;
            
             case 'video':
                 const safeVideoUrl = frappe.utils.escape_html(file_url);
-                return `<div class="wa-media-container"><video controls onloadeddata="if(window.scrollAfterLoad) window.scrollAfterLoad()" onclick="open_lightbox('${safeVideoUrl}', 'video')"><source src="${safeVideoUrl}" type="video/mp4"></video>${message_text && !message_text.startsWith('Video:') ? `<div class="wa-media-caption">${frappe.utils.escape_html(message_text).replace(/\n/g,"<br>")}</div>` : ''}</div>`;
+                return `<div class="wa-media-container"><video controls onloadeddata="if(window.scrollAfterLoad) window.scrollAfterLoad()" onclick="open_lightbox('${safeVideoUrl}', 'video')"><source src="${safeVideoUrl}" type="video/mp4"></video>${message_text && !message_text.startsWith('Video:') ? render_message_text(message_text, 'wa-media-caption') : ''}</div>`;
            
             case 'audio':
                 const safeAudioUrl = frappe.utils.escape_html(file_url);
@@ -1027,7 +1058,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 return `<div class="wa-media-container"><img src="${frappe.utils.escape_html(file_url)}" alt="Sticker" /></div>`;
            
             default:
-                return `<div class="wa-message-text">${frappe.utils.escape_html(message_text||'Unsupported message type').replace(/\n/g,"<br>")}</div>`;
+                return render_message_text(message_text || 'Unsupported message type');
         }
     }
 
@@ -1215,7 +1246,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
     function append_local_message(text) {
         const time = new Date().toTimeString().slice(0,5);
         const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        const html = `<div class="wa-message outgoing sending-msg" data-temp-id="${tempId}"><div class="wa-message-content"><div class="wa-message-text">${frappe.utils.escape_html(text).replace(/\n/g,"<br>")}</div><div class="wa-message-footer"><span>${format_timestamp(time)}</span>${get_pending_tick()}</div></div></div>`;
+        const html = `<div class="wa-message outgoing sending-msg" data-temp-id="${tempId}"><div class="wa-message-content">${render_message_text(text)}<div class="wa-message-footer"><span>${format_timestamp(time)}</span>${get_pending_tick()}</div></div></div>`;
         $("#wa-messages-area").append(html);
         scrollToBottomDelayed();
         if (active_contact) {
@@ -1335,7 +1366,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         if (!rows.length) return;
 
         rows.forEach((msg) => {
-            const textHtml = frappe.utils.escape_html(msg.text || "").replace(/\n/g, "<br>");
+            const textHtml = msg.text ? render_message_text(msg.text) : "";
             const imageList = (msg.image_data_urls || []).filter(Boolean);
             const fallbackList = imageList.length ? imageList : (msg.image_data_url ? [msg.image_data_url] : []);
             const mediaHtml = fallbackList.map((url) =>
@@ -1344,7 +1375,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             const html = `<div class="wa-message outgoing wa-sim-broadcast" data-sim-id="${frappe.utils.escape_html(msg.id || '')}">
                             <div class="wa-message-content">
                                 ${mediaHtml}
-                                ${textHtml ? `<div class="wa-message-text">${textHtml}</div>` : ""}
+                                ${textHtml}
                                 <div class="wa-message-footer">
                                     <span>${format_timestamp(msg.time || '') || 'now'}</span>${get_whatsapp_ticks("Outgoing", 1, "sent")}
                                 </div>
