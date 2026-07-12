@@ -4,6 +4,10 @@ import json
 import frappe
 import requests
 
+from whatsapp_integration.erpnext_whatsapp.custom_scripts.send_salesperson_outstanding_reports import (
+    _resolve_salesperson_user,
+)
+
 
 ALLOWED_CREDIT_CONTROLLER_EMAILS = {
     "ernestben69@gmail.com",
@@ -122,12 +126,30 @@ def _add_additional_recipients(recipients):
     return recipients
 
 
-def _get_sales_order_creator_recipient(sales_order_owner, comment_creator):
-    if _normalize_email(sales_order_owner) == _normalize_email(comment_creator):
-        return _add_additional_recipients([])
+def _get_sales_order_salesperson_recipients(sales_order, comment_creator):
+    recipients = []
+    seen_users = set()
+    comment_creator_email = _normalize_email(comment_creator)
 
-    user_doc = _get_enabled_user_with_mobile(sales_order_owner)
-    recipients = [user_doc] if user_doc else []
+    for row in getattr(sales_order, "sales_team", []) or []:
+        sales_person = (getattr(row, "sales_person", None) or "").strip()
+        if not sales_person:
+            continue
+
+        try:
+            user_doc, phone = _resolve_salesperson_user(sales_person)
+        except Exception:
+            continue
+
+        user_email = _normalize_email(user_doc.name)
+        if user_email == comment_creator_email or user_email in seen_users:
+            continue
+
+        user_doc = frappe._dict(user_doc)
+        user_doc.whatsapp_recipient_number = phone
+        recipients.append(user_doc)
+        seen_users.add(user_email)
+
     return _add_additional_recipients(recipients)
 
 
@@ -149,6 +171,11 @@ def _log_skip(reason, comment_doc, sales_order=None, extra=None):
                 "sales_order_owner": sales_order.owner,
                 "customer": sales_order.customer,
                 "customer_name": sales_order.customer_name,
+                "sales_team": [
+                    getattr(row, "sales_person", None)
+                    for row in (getattr(sales_order, "sales_team", []) or [])
+                    if getattr(row, "sales_person", None)
+                ],
             }
         )
 
@@ -344,10 +371,10 @@ def _send_sales_order_comment_notifications(comment_name):
         if not _is_credit_controller(comment_creator):
             return
 
-        recipients = _get_sales_order_creator_recipient(sales_order.owner, comment_creator)
+        recipients = _get_sales_order_salesperson_recipients(sales_order, comment_creator)
         if not recipients:
             _log_skip(
-                "Credit Controller comment found, but Sales Order creator has no usable User mobile_no/phone or is same as commenter.",
+                "Credit Controller comment found, but Sales Order has no resolvable Sales Person with a usable User mobile_no/phone.",
                 comment_doc,
                 sales_order,
                 {"comment_creator": comment_creator},
