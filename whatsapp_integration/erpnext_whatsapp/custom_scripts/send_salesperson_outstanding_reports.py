@@ -22,6 +22,7 @@ from whatsapp_integration.erpnext_whatsapp.custom_scripts.send_message_template_
 
 TEMPLATE_NAME = "outstanding_reminder_with_pdf"
 TEMPLATE_LANGUAGE = "en"
+MIN_OUTSTANDING_AGE_DAYS = 60
 TEMPLATE_BODY = (
     "📊 Outstanding Summary\n\n"
     "Hello {{1}},\n\n"
@@ -184,6 +185,8 @@ def _build_salesperson_invoice_map(target_salesperson=None):
         due_date = getdate(invoice["due_date"] or invoice["posting_date"])
         posting_date = getdate(invoice["posting_date"])
         age_days = max((date.today() - due_date).days, 0) if due_date else 0
+        if age_days < MIN_OUTSTANDING_AGE_DAYS:
+            continue
 
         for salesperson, share_amount in _distribute_invoice(invoice).items():
             if target_salesperson and salesperson != target_salesperson:
