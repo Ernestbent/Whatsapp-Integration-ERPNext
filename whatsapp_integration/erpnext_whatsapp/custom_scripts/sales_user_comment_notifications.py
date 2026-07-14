@@ -17,7 +17,7 @@ ADDITIONAL_COMMENT_NOTIFICATION_NUMBERS = {
 
 CREDIT_CONTROLLER_ROLE = "Credit Controller"
 SALES_USER_ROLE = "Sales User"
-TEMPLATE_NAME = "comment_for_sales_person"
+TEMPLATE_NAME = "comment_for_sales_person_v2"
 TEMPLATE_LANGUAGE = "en"
 TEMPLATE_BODY = (
     "Notification:\n\n"
