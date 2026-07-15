@@ -41,14 +41,16 @@ def _normalize_phone(phone):
         return ""
 
     digits = re.sub(r"\D", "", str(phone))
-    if digits.startswith("0") and len(digits) >= 10:
-        return "256" + digits[1:]
-    if digits.startswith("256"):
-        return digits
-    if len(digits) == 9:
-        return "256" + digits
+    if digits.startswith("00"):
+        digits = digits[2:]
+    if digits.startswith("2560"):
+        digits = "256" + digits[4:]
+    elif digits.startswith("0"):
+        digits = "256" + digits[1:]
+    elif not digits.startswith("256"):
+        digits = "256" + digits
 
-    return "256" + digits.lstrip("0")
+    return digits if len(digits) == 12 and digits.startswith("256") else ""
 
 
 def _strip_comment_html(content):

@@ -208,6 +208,9 @@ scheduler_events = {
         "0 7 * * *": [
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_salesperson_outstanding_reports.run_scheduled_salesperson_outstanding_reports"
         ],
+        "0 9 * * *": [
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_manager_outstanding_reports.run_scheduled_manager_outstanding_reports"
+        ],
         "55 23 * * *": [   # 11:55 PM every day
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.automatic_whatsapp_dispatch.run_scheduled_report"
         ]

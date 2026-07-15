@@ -10,7 +10,7 @@ from whatsapp_integration.erpnext_whatsapp.custom_scripts.send_salesperson_outst
 
 
 ALLOWED_CREDIT_CONTROLLER_EMAILS = {
-    "ernestben69@gmail.com",
+    # "ernestben69@gmail.com",
     "admin@autozonepro.org",
     "developer@autozonepro.org",
     "outstanding@autozonepro.org"
@@ -321,7 +321,6 @@ def _send_credit_controller_comment_template(phone, values, comment_doc, sales_o
                 "doctype": "Whatsapp Message",
                 "from_number": phone,
                 "message_type": "template",
-                "custom_status": "Outgoing",
                 "message": _render_credit_controller_message(
                     _build_credit_controller_log_values(values, comment_doc, sales_order)
                 ),

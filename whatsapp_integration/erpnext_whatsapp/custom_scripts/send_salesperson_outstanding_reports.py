@@ -35,6 +35,13 @@ TEMPLATE_BODY = (
 )
 TEMPLATE_FOOTER = "Autozone Professional Limited"
 PDF_DECIMAL_PLACES = Decimal("0.01")
+SALES_PERSON_USER_OVERRIDES = {
+    "jolie": "estimates@autozonepro.org",
+    "moses": "moyabira3@gmail.com",
+    "rhoda": "rhodahnakku6@gmail.com",
+    "rhodah": "rhodahnakku6@gmail.com",
+    "rony": "ronniebbaale252@gmail.com",
+}
 
 
 def _round_amount(value):
@@ -504,6 +511,13 @@ def _resolve_salesperson_user(salesperson):
 
     if sales_person_meta.has_field("custom_user"):
         custom_user = frappe.db.get_value("Sales Person", salesperson, "custom_user")
+
+    if not custom_user:
+        identity = _get_salesperson_identity(salesperson)
+        for value in (identity["name"], identity["sales_person_name"]):
+            custom_user = SALES_PERSON_USER_OVERRIDES.get(_normalize_match_value(value))
+            if custom_user:
+                break
 
     if not custom_user:
         return _find_user_from_salesperson_name(salesperson)
