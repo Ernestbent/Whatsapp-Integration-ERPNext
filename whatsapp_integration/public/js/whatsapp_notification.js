@@ -565,7 +565,8 @@ function update_whatsapp_notifications() {
             doctype: "Whatsapp Message",
             filters: {
                 custom_status: "Incoming",
-                custom_read: 0
+                custom_read: 0,
+                message_status: "received"
             }
         },
         callback: r => {
@@ -582,14 +583,17 @@ function update_whatsapp_notifications() {
             doctype: "Whatsapp Message",
             filters: {
                 custom_status: "Incoming",
-                custom_read: 0
+                custom_read: 0,
+                message_status: "received"
             },
-            fields: ["name", "from_number", "customer", "customer.customer_name as customer_name", "custom_user", "custom_user.first_name as user_first_name", "message", "creation", "timestamp"],
+            fields: ["name", "from_number", "customer", "customer.customer_name as customer_name", "custom_user", "custom_user.first_name as user_first_name", "message", "creation", "timestamp", "custom_status", "message_status"],
             order_by: "creation desc",
             limit_page_length: 100
         },
         callback: r => {
-            const messages = r.message || [];
+            const messages = (r.message || []).filter(message =>
+                message.custom_status === "Incoming" && message.message_status === "received"
+            );
             enrich_and_render_messages(messages);
         },
         error: () => {

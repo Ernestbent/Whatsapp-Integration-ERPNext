@@ -6,7 +6,7 @@ import requests
 
 
 ALLOWED_CREDIT_CONTROLLER_EMAILS = {
-    "ernestben69@gmail.com",
+    # "ernestben69@gmail.com",
     "admin@autozonepro.org",
     "developer@autozonepro.org",
     "outstanding@autozonepro.org"
@@ -295,6 +295,7 @@ def _send_template(phone, values, comment_doc, sales_order, recipient_user=None,
                 "doctype": "Whatsapp Message",
                 "from_number": phone,
                 "message_type": "template",
+                "custom_status": "Outgoing",
                 "message": _build_log_message(values, comment_doc, sales_order),
                 "message_status": "sent",
                 "message_id": message_id,

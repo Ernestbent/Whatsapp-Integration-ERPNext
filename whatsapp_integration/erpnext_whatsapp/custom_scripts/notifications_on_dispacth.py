@@ -219,7 +219,9 @@ def log_notification(doc, mobile_number, message_text, message_id):
             "doctype": "Whatsapp Message",
             "from_number": frappe.db.get_single_value("Whatsapp Setting", "phone_number_id"),
             "message_type": "text",
+            "custom_status": "Outgoing",
             "message": f"[Dispatch Notification] {message_text[:200]}...",
+            "message_status": "sent",
             "timestamp": time_str,
             "customer": customer,
             "media_id": message_id

@@ -321,6 +321,7 @@ def _send_credit_controller_comment_template(phone, values, comment_doc, sales_o
                 "doctype": "Whatsapp Message",
                 "from_number": phone,
                 "message_type": "template",
+                "custom_status": "Outgoing",
                 "message": _render_credit_controller_message(
                     _build_credit_controller_log_values(values, comment_doc, sales_order)
                 ),
