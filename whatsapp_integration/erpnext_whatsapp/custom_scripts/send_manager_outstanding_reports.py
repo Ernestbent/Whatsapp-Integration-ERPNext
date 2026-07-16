@@ -28,12 +28,16 @@ from whatsapp_integration.erpnext_whatsapp.custom_scripts.send_salesperson_outst
 TEMPLATE_NAME = "outstanding_report_manager"
 TEMPLATE_LANGUAGE = "en"
 REPORT_CURRENCY = "UGX"
+MIN_MANAGER_INVOICE_OUTSTANDING = 1000.0
 MANAGER_RECIPIENT_EMAILS = (
     "ernestben69@gmail.com",
     "admin@autozonepro.org",
     "developer@autozonepro.org",
     "davisorford5@gmail.com",
     "outstanding@autozonepro.org",
+)
+ADDITIONAL_MANAGER_RECIPIENTS = (
+    ("Manager", "256755829642"),
 )
 TEMPLATE_BODY = (
     "60+ Days Outstanding Report\n\n"
@@ -53,8 +57,33 @@ def _get_template_api_name():
     return re.sub(r"[^a-z0-9_]", "_", TEMPLATE_NAME.lower())
 
 
+def _filter_manager_invoice_rows(salesperson_invoices):
+    invoice_totals = {}
+    for invoice_rows in salesperson_invoices.values():
+        for row in invoice_rows:
+            invoice_number = row.get("invoice_number")
+            if not invoice_number:
+                continue
+            invoice_totals[invoice_number] = invoice_totals.get(invoice_number, 0.0) + float(
+                row.get("outstanding_amount") or 0
+            )
+
+    eligible_invoices = {
+        invoice_number
+        for invoice_number, outstanding in invoice_totals.items()
+        if _round_amount(outstanding) >= MIN_MANAGER_INVOICE_OUTSTANDING
+    }
+    return {
+        salesperson: [
+            row for row in invoice_rows if row.get("invoice_number") in eligible_invoices
+        ]
+        for salesperson, invoice_rows in salesperson_invoices.items()
+        if any(row.get("invoice_number") in eligible_invoices for row in invoice_rows)
+    }
+
+
 def _build_manager_report():
-    salesperson_invoices = _build_salesperson_invoice_map()
+    salesperson_invoices = _filter_manager_invoice_rows(_build_salesperson_invoice_map())
     salesperson_reports = []
     invoice_numbers = set()
     customers = set()
@@ -81,6 +110,8 @@ def _build_manager_report():
     return {
         "currency": REPORT_CURRENCY,
         "minimum_age_days": MIN_OUTSTANDING_AGE_DAYS,
+        "minimum_outstanding": MIN_MANAGER_INVOICE_OUTSTANDING,
+        "minimum_outstanding_label": _format_amount(MIN_MANAGER_INVOICE_OUTSTANDING),
         "total_outstanding": total_outstanding,
         "total_outstanding_label": _format_amount(total_outstanding),
         "salesperson_count": len(salesperson_reports),
@@ -180,7 +211,10 @@ def _render_report_html(report):
         <body>
             <div class="report-header">
                 <h1>{{ report.minimum_age_days }}+ Days Outstanding Report</h1>
-                <div class="muted">Management summary and invoice breakdown | Generated {{ generated_on }}</div>
+                <div class="muted">
+                    Invoices with at least {{ report.currency }} {{ report.minimum_outstanding_label }} outstanding |
+                    Generated {{ generated_on }}
+                </div>
             </div>
 
             <table class="summary-grid">
@@ -344,6 +378,29 @@ def _resolve_manager_recipients():
         )
         seen_numbers.add(phone)
 
+    for recipient_name, raw_phone in ADDITIONAL_MANAGER_RECIPIENTS:
+        phone = _normalize_phone(raw_phone)
+        if not phone:
+            skipped.append(
+                {
+                    "phone": raw_phone,
+                    "status": "skipped",
+                    "detail": "Additional recipient has an invalid phone number",
+                }
+            )
+            continue
+        if phone in seen_numbers:
+            continue
+
+        recipients.append(
+            {
+                "user": "",
+                "recipient_name": recipient_name,
+                "phone": phone,
+            }
+        )
+        seen_numbers.add(phone)
+
     return recipients, skipped
 
 
@@ -404,7 +461,11 @@ def _log_outgoing_message(
         "message_id": message_id or "",
         "timestamp": now_datetime().strftime("%H:%M:%S"),
     }
-    if meta.has_field("custom_user"):
+    if (
+        meta.has_field("custom_user")
+        and recipient.get("user")
+        and frappe.db.exists("User", recipient["user"])
+    ):
         log_data["custom_user"] = recipient["user"]
     if meta.has_field("custom_document"):
         log_data["custom_document"] = file_doc.file_url
@@ -516,7 +577,10 @@ def _run_manager_outstanding_reports():
             "sent": 0,
             "failed": 0,
             "skipped": 1,
-            "detail": f"No invoices aged {MIN_OUTSTANDING_AGE_DAYS} days or more",
+            "detail": (
+                f"No invoices aged {MIN_OUTSTANDING_AGE_DAYS} days or more with outstanding "
+                f"of at least {_format_amount(MIN_MANAGER_INVOICE_OUTSTANDING)}"
+            ),
         }
 
     recipients, details = _resolve_manager_recipients()
