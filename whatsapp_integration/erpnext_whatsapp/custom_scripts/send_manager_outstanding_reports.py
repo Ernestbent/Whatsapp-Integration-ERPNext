@@ -32,15 +32,13 @@ MIN_MANAGER_INVOICE_OUTSTANDING = 1000.0
 EXCLUDED_MANAGER_SALESPEOPLE = {"office"}
 MANAGER_RECIPIENT_EMAILS = (
     "ernestben69@gmail.com",
-    # Temporarily disabled while testing the manager report.
-    # "admin@autozonepro.org",
-    # "developer@autozonepro.org",
-    # "davisorford5@gmail.com",
-    # "outstanding@autozonepro.org",
+    "admin@autozonepro.org",
+    "developer@autozonepro.org",
+    "davisorford5@gmail.com",
+    "outstanding@autozonepro.org",
 )
 ADDITIONAL_MANAGER_RECIPIENTS = (
-    # Temporarily disabled while testing the manager report.
-    # ("Boss", "256755829642"),
+    ("Boss", "256755829642"),
 )
 TEMPLATE_BODY = (
     "60+ Days Outstanding Report\n\n"
