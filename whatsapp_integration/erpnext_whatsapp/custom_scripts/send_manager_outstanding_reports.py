@@ -197,9 +197,14 @@ def _render_report_html(report):
                     font-weight: bold;
                     text-align: left;
                 }
-                .invoice-number {
-                    font-size: 8px;
+                table.invoice-table th,
+                table.invoice-table td {
+                    font-size: 9px;
                     white-space: nowrap;
+                    vertical-align: middle;
+                }
+                table.invoice-table th {
+                    font-size: 8px;
                 }
                 .number { text-align: right; }
                 .salesperson-detail { page-break-before: always; }
@@ -295,20 +300,20 @@ def _render_report_html(report):
                             oldest {{ customer.oldest_ageing }} days
                         </span>
                     </div>
-                    <table class="data">
+                    <table class="data invoice-table">
                         <thead>
                             <tr>
-                                <th style="width: 25%;">Invoice</th>
-                                <th style="width: 15%;">Due Date</th>
-                                <th class="number" style="width: 10%;">Age</th>
-                                <th class="number">Allocated Outstanding</th>
-                                <th class="number">Invoice Total</th>
+                                <th style="width: 24%;">Invoice</th>
+                                <th style="width: 13%;">Due Date</th>
+                                <th class="number" style="width: 8%;">Age</th>
+                                <th class="number" style="width: 28%;">Allocated Outstanding</th>
+                                <th class="number" style="width: 27%;">Invoice Total</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for invoice in customer.invoices %}
                             <tr>
-                                <td class="invoice-number">{{ invoice.invoice_number }}</td>
+                                <td>{{ invoice.invoice_number }}</td>
                                 <td>{{ invoice.due_date_label }}</td>
                                 <td class="number">{{ invoice.age_days }} days</td>
                                 <td class="number">{{ report.currency }} {{ invoice.outstanding_amount_label }}</td>
