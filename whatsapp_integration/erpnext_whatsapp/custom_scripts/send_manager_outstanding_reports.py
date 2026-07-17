@@ -29,15 +29,18 @@ TEMPLATE_NAME = "outstanding_report_manager"
 TEMPLATE_LANGUAGE = "en"
 REPORT_CURRENCY = "UGX"
 MIN_MANAGER_INVOICE_OUTSTANDING = 1000.0
+EXCLUDED_MANAGER_SALESPEOPLE = {"office"}
 MANAGER_RECIPIENT_EMAILS = (
     "ernestben69@gmail.com",
-    "admin@autozonepro.org",
-    "developer@autozonepro.org",
-    "davisorford5@gmail.com",
-    "outstanding@autozonepro.org",
+    # Temporarily disabled while testing the manager report.
+    # "admin@autozonepro.org",
+    # "developer@autozonepro.org",
+    # "davisorford5@gmail.com",
+    # "outstanding@autozonepro.org",
 )
 ADDITIONAL_MANAGER_RECIPIENTS = (
-    ("Manager", "256755829642"),
+    # Temporarily disabled while testing the manager report.
+    # ("Boss", "256755829642"),
 )
 TEMPLATE_BODY = (
     "60+ Days Outstanding Report\n\n"
@@ -58,6 +61,11 @@ def _get_template_api_name():
 
 
 def _filter_manager_invoice_rows(salesperson_invoices):
+    salesperson_invoices = {
+        salesperson: invoice_rows
+        for salesperson, invoice_rows in salesperson_invoices.items()
+        if str(salesperson or "").strip().casefold() not in EXCLUDED_MANAGER_SALESPEOPLE
+    }
     invoice_totals = {}
     for invoice_rows in salesperson_invoices.values():
         for row in invoice_rows:
@@ -189,6 +197,10 @@ def _render_report_html(report):
                     font-weight: bold;
                     text-align: left;
                 }
+                .invoice-number {
+                    font-size: 8px;
+                    white-space: nowrap;
+                }
                 .number { text-align: right; }
                 .salesperson-detail { page-break-before: always; }
                 .salesperson-head {
@@ -286,9 +298,8 @@ def _render_report_html(report):
                     <table class="data">
                         <thead>
                             <tr>
-                                <th style="width: 19%;">Invoice</th>
-                                <th style="width: 13%;">Posting Date</th>
-                                <th style="width: 13%;">Due Date</th>
+                                <th style="width: 25%;">Invoice</th>
+                                <th style="width: 15%;">Due Date</th>
                                 <th class="number" style="width: 10%;">Age</th>
                                 <th class="number">Allocated Outstanding</th>
                                 <th class="number">Invoice Total</th>
@@ -297,8 +308,7 @@ def _render_report_html(report):
                         <tbody>
                             {% for invoice in customer.invoices %}
                             <tr>
-                                <td>{{ invoice.invoice_number }}</td>
-                                <td>{{ invoice.posting_date_label }}</td>
+                                <td class="invoice-number">{{ invoice.invoice_number }}</td>
                                 <td>{{ invoice.due_date_label }}</td>
                                 <td class="number">{{ invoice.age_days }} days</td>
                                 <td class="number">{{ report.currency }} {{ invoice.outstanding_amount_label }}</td>
