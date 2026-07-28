@@ -203,20 +203,14 @@ doc_events = {
 }
 
 # Scheduled Tasks
-## Commented out Scheduler events to avoid sending multiple messages to the same customer in a day. The scheduler will be re-enabled after implementing a check to ensure that messages are not sent multiple times to the same customer in a single day.
-# scheduler_events = {
-#     "cron": {
-#         "0 7 * * *": [
-#             "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_salesperson_outstanding_reports.run_scheduled_salesperson_outstanding_reports"
-#         ],
-#         "0 9 * * *": [
-#             "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_manager_outstanding_reports.run_scheduled_manager_outstanding_reports"
-#         ],
-#         "55 23 * * *": [   # 11:55 PM every day
-#             "whatsapp_integration.erpnext_whatsapp.custom_scripts.automatic_whatsapp_dispatch.run_scheduled_report"
-#         ]
-#     }
-# }
+scheduler_events = {
+    "cron": {
+        "0 11 * * *": [
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_salesperson_outstanding_reports.run_scheduled_salesperson_outstanding_reports",
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_manager_outstanding_reports.run_scheduled_manager_outstanding_reports",
+        ],
+    }
+}
 
 # Testing
 # -------
