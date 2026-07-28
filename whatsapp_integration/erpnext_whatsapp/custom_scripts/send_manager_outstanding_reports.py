@@ -4,7 +4,6 @@ import re
 import frappe
 import requests
 from frappe.utils import cint, formatdate, now_datetime, nowdate
-from frappe.utils.file_manager import save_file
 from frappe.utils.pdf import get_pdf
 
 from whatsapp_integration.erpnext_whatsapp.custom_scripts.sales_user_comment_notifications import (
@@ -21,6 +20,7 @@ from whatsapp_integration.erpnext_whatsapp.custom_scripts.send_salesperson_outst
     _format_amount,
     _get_file_path,
     _get_whatsapp_credentials,
+    _is_outstanding_reports_disabled,
     _round_amount,
 )
 
@@ -333,14 +333,17 @@ def _render_report_html(report):
 
 def _create_report_file(report):
     pdf_content = get_pdf(_render_report_html(report))
-    return save_file(
-        fname=f"Manager_60_Plus_Outstanding_Report_{nowdate()}.pdf",
-        content=pdf_content,
-        dt=None,
-        dn=None,
-        folder="Home/Attachments",
-        is_private=1,
+    file_doc = frappe.get_doc(
+        {
+            "doctype": "File",
+            "file_name": f"Manager_60_Plus_Outstanding_Report_{nowdate()}.pdf",
+            "content": pdf_content,
+            "folder": "Home/Attachments",
+            "is_private": 1,
+        }
     )
+    file_doc.insert(ignore_permissions=True)
+    return file_doc
 
 
 def _resolve_manager_recipients():
@@ -659,6 +662,12 @@ def _send_manager_outstanding_reports_background():
 
 
 def run_scheduled_manager_outstanding_reports():
+    if _is_outstanding_reports_disabled():
+        frappe.logger().info(
+            "Skipping scheduled manager outstanding reports because site config disabled them."
+        )
+        return
+
     frappe.enqueue(
         _send_manager_outstanding_reports_background,
         queue="default",
@@ -671,6 +680,12 @@ def run_scheduled_manager_outstanding_reports():
 
 @frappe.whitelist()
 def send_manager_outstanding_reports(enqueue=False):
+    if _is_outstanding_reports_disabled():
+        return {
+            "skipped": True,
+            "message": "Outstanding WhatsApp reports are disabled for this site.",
+        }
+
     if cint(enqueue):
         frappe.enqueue(
             _send_manager_outstanding_reports_background,

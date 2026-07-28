@@ -8,7 +8,6 @@ import frappe
 import requests
 from frappe import _
 from frappe.utils import cint, formatdate, getdate, now_datetime, nowdate
-from frappe.utils.file_manager import save_file
 from frappe.utils.pdf import get_pdf
 
 from whatsapp_integration.erpnext_whatsapp.custom_scripts.sales_user_comment_notifications import (
@@ -42,6 +41,13 @@ SALES_PERSON_USER_OVERRIDES = {
     "rhodah": "rhodahnakku6@gmail.com",
     "rony": "ronniebbaale252@gmail.com",
 }
+
+
+def _is_outstanding_reports_disabled():
+    return bool(
+        cint(frappe.conf.get("disable_outstanding_whatsapp_reports"))
+        or cint(frappe.conf.get("disable_whatsapp_sends"))
+    )
 
 
 def _round_amount(value):
@@ -418,19 +424,18 @@ def _render_report_html(report_data):
 
 def _save_report_file(salesperson, pdf_content):
     filename = f"Outstanding_Report_{frappe.scrub(salesperson).replace('_', ' ').title().replace(' ', '_')}_{nowdate()}.pdf"
-    file_doc = save_file(
-        fname=filename,
-        content=pdf_content,
-        dt="Sales Person",
-        dn=salesperson,
-        folder="Home/Attachments",
-        is_private=1,
+    file_doc = frappe.get_doc(
+        {
+            "doctype": "File",
+            "file_name": filename,
+            "content": pdf_content,
+            "attached_to_doctype": "Sales Person",
+            "attached_to_name": salesperson,
+            "folder": "Home/Attachments",
+            "is_private": 1,
+        }
     )
-    if hasattr(file_doc, "db_set"):
-        if frappe.get_meta("File").has_field("attached_to_doctype"):
-            file_doc.db_set("attached_to_doctype", "Sales Person", update_modified=False)
-        if frappe.get_meta("File").has_field("attached_to_name"):
-            file_doc.db_set("attached_to_name", salesperson, update_modified=False)
+    file_doc.insert(ignore_permissions=True)
     return file_doc
 
 
@@ -849,6 +854,12 @@ def _send_salesperson_outstanding_reports_background(salesperson=None):
 
 
 def run_scheduled_salesperson_outstanding_reports():
+    if _is_outstanding_reports_disabled():
+        frappe.logger().info(
+            "Skipping scheduled salesperson outstanding reports because site config disabled them."
+        )
+        return
+
     frappe.enqueue(
         _send_salesperson_outstanding_reports_background,
         queue="default",
@@ -861,6 +872,12 @@ def run_scheduled_salesperson_outstanding_reports():
 
 @frappe.whitelist()
 def send_salesperson_outstanding_reports(enqueue=False, salesperson=None):
+    if _is_outstanding_reports_disabled():
+        return {
+            "skipped": True,
+            "message": "Outstanding WhatsApp reports are disabled for this site.",
+        }
+
     enqueue = cint(enqueue)
     salesperson = (salesperson or "").strip()
     if enqueue:
