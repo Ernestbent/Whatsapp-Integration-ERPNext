@@ -215,7 +215,7 @@ scheduler_events = {
 # Testing
 # -------
 
-# before_tests = "whatsapp_integration.install.before_tests"
+# before_tests = "whatsapp_integration.install.before_tests"s
 
 # Overriding Methods
 # ------------------------------
