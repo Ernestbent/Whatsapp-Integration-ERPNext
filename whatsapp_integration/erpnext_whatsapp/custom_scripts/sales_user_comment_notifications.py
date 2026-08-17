@@ -14,16 +14,6 @@ ALLOWED_CREDIT_CONTROLLER_EMAILS = {
 ADDITIONAL_COMMENT_NOTIFICATION_NUMBERS = {
     "+256 755 829642",
 }
-CONDITIONAL_COMMENT_NOTIFICATION_NUMBERS = {
-    "0750229862",
-}
-CONDITIONAL_COMMENT_NOTIFICATION_SALES_USERS = {
-    "rhoda@autozonepro.org",
-    "cirus@autozonepro.org",
-    "issa@autozonepro.org",
-    "owen@autozonepro.org",
-    "emma@autozonepro.org",
-}
 
 CREDIT_CONTROLLER_ROLE = "Credit Controller"
 SALES_USER_ROLE = "Sales User"
@@ -135,38 +125,6 @@ def _add_additional_recipients(recipients):
     return recipients
 
 
-def _add_conditional_recipients(recipients, sales_order_owner):
-    if _normalize_email(sales_order_owner) not in {
-        _normalize_email(user) for user in CONDITIONAL_COMMENT_NOTIFICATION_SALES_USERS
-    }:
-        return recipients
-
-    seen_numbers = {
-        _normalize_phone(getattr(recipient, "whatsapp_recipient_number", None))
-        for recipient in recipients
-        if getattr(recipient, "whatsapp_recipient_number", None)
-    }
-
-    for phone in CONDITIONAL_COMMENT_NOTIFICATION_NUMBERS:
-        normalized = _normalize_phone(phone)
-        if not normalized or normalized in seen_numbers:
-            continue
-
-        recipients.append(
-            frappe._dict(
-                {
-                    "name": normalized,
-                    "full_name": "Conditional Comment Recipient",
-                    "whatsapp_recipient_number": normalized,
-                    "is_additional_recipient": True,
-                }
-            )
-        )
-        seen_numbers.add(normalized)
-
-    return recipients
-
-
 def _get_allowed_credit_controller_recipients(comment_creator, sales_order_owner=None):
     allowed_emails = {_normalize_email(email) for email in ALLOWED_CREDIT_CONTROLLER_EMAILS}
     role_rows = frappe.get_all(
@@ -198,8 +156,7 @@ def _get_allowed_credit_controller_recipients(comment_creator, sales_order_owner
         recipients.append(user_doc)
         seen.add(user_email)
 
-    recipients = _add_additional_recipients(recipients)
-    return _add_conditional_recipients(recipients, sales_order_owner)
+    return _add_additional_recipients(recipients)
 
 
 def _log_whatsapp_error(title, message, payload=None, response=None, exc=None):
