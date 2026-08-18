@@ -26,6 +26,7 @@ Please find the Sales Order details."""
 RECIPIENT_NUMBERS = {
     "0750229862",
     "0755829642",
+    "0758116526"
 }
 CENTRAL_SALES_USER_EMAILS = {
     "rhodahnakku6@gmail.com",
