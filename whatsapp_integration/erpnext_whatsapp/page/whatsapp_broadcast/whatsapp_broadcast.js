@@ -62,8 +62,11 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
                         </div>
 
                         <div class="wb-field">
-                            <label for="wb-image">Images (optional preview only)</label>
-                            <input type="file" id="wb-image" accept="image/*" multiple />
+                            <label>Template Attachment</label>
+                            <div class="wb-actions">
+                                <button class="wb-btn wb-btn-secondary" id="wb-upload">Upload File</button>
+                                <span class="wb-stat" id="wb-file-name">No file selected</span>
+                            </div>
                         </div>
 
                         <div class="wb-actions">
@@ -98,11 +101,9 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
                     <div class="wb-card">
                         <h3 style="margin-top:0;color:#1f4937;">Template Preview</h3>
                         <div class="wb-preview">
-                            <img id="wb-preview-img" class="wb-preview-img" alt="preview" />
-                            <div id="wb-preview-gallery" class="wb-preview-gallery"></div>
                             <div class="wb-bubble" id="wb-preview-text">Select a template to preview.</div>
                         </div>
-                        <p class="wb-stat">Template body is shown as preview. Real params are not expanded in this simulator.</p>
+                        <p class="wb-stat">Customer names are personalized separately for every recipient.</p>
                     </div>
 
                     <div class="wb-card">
@@ -114,15 +115,14 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
         </div>
     `);
 
-    const SIM_QUEUE_KEY = 'wa_sim_broadcast_queue';
     const GROUPS_KEY = 'wa_broadcast_groups';
-    const HISTORY_KEY = 'wa_broadcast_history';
 
     let customers = [];
     let groups = [];
     let history = [];
     let templates = [];
-    let imageDataUrls = [];
+    let attachmentUrl = '';
+    let attachmentName = '';
 
     function setStat(text, color) {
         const $stat = $('#wb-stat');
@@ -136,8 +136,6 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
     }
 
     function saveGroups() { localStorage.setItem(GROUPS_KEY, JSON.stringify(groups)); }
-    function saveHistory() { localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 100))); }
-
     function getSelectedGroup() {
         const groupId = $('#wb-group').val();
         return groups.find(g => g.id === groupId) || null;
@@ -181,14 +179,16 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
         }
 
         $box.html(history.map(item => {
-            const campaign = frappe.utils.escape_html(item.campaign_name || 'Broadcast');
-            const groupName = frappe.utils.escape_html(item.group_name || 'Unknown Group');
-            const templateName = frappe.utils.escape_html(item.template_name || '-');
-            const msg = frappe.utils.escape_html((item.preview_text || '').slice(0, 120));
+            const campaign = frappe.utils.escape_html(item.broadcast_name || 'Broadcast');
+            const templateName = frappe.utils.escape_html(item.name1 || '-');
+            const status = frappe.utils.escape_html(item.send_status || 'Draft');
+            const formLink = frappe.utils.get_form_link(
+                'BroadCast Message', item.name, true, campaign
+            );
             return `<div class="wb-history-item">
-                <div class="wb-history-name">${campaign}</div>
-                <div class="wb-history-meta">Group: ${groupName} | Template: ${templateName} | Recipients: ${item.recipient_count} | ${frappe.datetime.str_to_user(item.iso_timestamp)}</div>
-                <div class="wb-history-msg">${msg || '(Template broadcast)'}</div>
+                <div class="wb-history-name">${formLink}</div>
+                <div class="wb-history-meta">Template: ${templateName} | Status: ${status} | Recipients: ${item.recipient_count || 0} | ${frappe.datetime.str_to_user(item.creation)}</div>
+                <div class="wb-history-msg">Sent: ${item.sent_count || 0} | Failed: ${item.failed_count || 0} | Skipped: ${item.skipped_count || 0}</div>
             </div>`;
         }).join(''));
     }
@@ -215,20 +215,12 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
         $box.html(html);
     }
 
-    function queueBroadcastJob(payload) {
-        let queue = [];
-        try { queue = JSON.parse(localStorage.getItem(SIM_QUEUE_KEY) || '[]'); }
-        catch (e) { queue = []; }
-        queue.push(payload);
-        localStorage.setItem(SIM_QUEUE_KEY, JSON.stringify(queue));
-    }
-
     function loadTemplates() {
         frappe.call({
             method: 'frappe.client.get_list',
             args: {
                 doctype: 'Whatsapp Message Template',
-                fields: ['name', 'template_name', 'language', 'status', 'body_text'],
+                fields: ['name', 'template_name', 'language', 'status', 'format', 'body_text', 'media_example'],
                 filters: [['status', 'in', ['Approved', 'APPROVED']]],
                 order_by: 'modified desc',
                 limit_page_length: 500
@@ -242,18 +234,30 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
 
     function loadCustomers() {
         frappe.call({
+            method: 'whatsapp_integration.erpnext_whatsapp.doctype.broadcast_message.broadcast_message.get_eligible_customers',
+            callback: function(r) {
+                customers = (r.message && r.message.customers) || [];
+                renderCustomersForGroup();
+                setStat(`${customers.length} eligible customers loaded.`, '#60786b');
+            }
+        });
+    }
+
+    function loadHistory() {
+        frappe.call({
             method: 'frappe.client.get_list',
             args: {
-                doctype: 'Customer',
-                fields: ['name', 'customer_name', 'whatsapp_number'],
-                order_by: 'modified desc',
-                limit_page_length: 1000
+                doctype: 'BroadCast Message',
+                fields: [
+                    'name', 'broadcast_name', 'name1', 'send_status', 'recipient_count',
+                    'sent_count', 'failed_count', 'skipped_count', 'creation'
+                ],
+                order_by: 'creation desc',
+                limit_page_length: 50
             },
             callback: function(r) {
-                customers = r.message || [];
-                renderCustomersForGroup();
-                const withWa = customers.filter(c => normalizePhone(c.whatsapp_number)).length;
-                setStat(`${customers.length} customers loaded (${withWa} with WhatsApp numbers).`, '#60786b');
+                history = r.message || [];
+                renderHistory();
             }
         });
     }
@@ -270,35 +274,15 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
             saveGroups();
         }
 
-        history = safeParse(HISTORY_KEY, []);
         renderGroupOptions();
-        renderHistory();
     }
 
     function updateTemplatePreview() {
         const tpl = getSelectedTemplate();
-        const preview = (tpl && tpl.body_text) ? tpl.body_text : 'Select a template to preview.';
+        const preview = (tpl && tpl.body_text)
+            ? tpl.body_text.replace(/\{\{customer_name\}\}/g, 'Customer Name')
+            : 'Select a template to preview.';
         $('#wb-preview-text').html(frappe.utils.escape_html(preview).replace(/\n/g, '<br>'));
-    }
-
-    function renderImagePreview() {
-        const $single = $('#wb-preview-img');
-        const $gallery = $('#wb-preview-gallery');
-
-        if (!imageDataUrls.length) {
-            $single.hide().attr('src', '');
-            $gallery.html('');
-            return;
-        }
-
-        if (imageDataUrls.length === 1) {
-            $single.attr('src', imageDataUrls[0]).show();
-            $gallery.html('');
-            return;
-        }
-
-        $single.hide().attr('src', '');
-        $gallery.html(imageDataUrls.map((url, idx) => `<img src="${url}" alt="Preview ${idx + 1}" />`).join(''));
     }
 
     $('#wb-group').on('change', function() {
@@ -309,28 +293,20 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
         updateTemplatePreview();
     });
 
-    $('#wb-image').on('change', function(e) {
-        const files = Array.from(e.target.files || []);
-        if (!files.length) {
-            imageDataUrls = [];
-            renderImagePreview();
-            return;
-        }
-
-        const readers = files.map((file) => new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = function(ev) {
-                resolve(ev.target.result || '');
-            };
-            reader.onerror = function() {
-                resolve('');
-            };
-            reader.readAsDataURL(file);
-        }));
-
-        Promise.all(readers).then((results) => {
-            imageDataUrls = results.filter(Boolean);
-            renderImagePreview();
+    $('#wb-upload').on('click', function() {
+        new frappe.ui.FileUploader({
+            allow_multiple: false,
+            allow_web_link: false,
+            folder: 'Home/Attachments',
+            restrictions: {
+                allowed_file_types: ['image/*', 'video/*', '.pdf', '.xlsx', '.xls', '.csv']
+            },
+            on_success(fileDoc) {
+                attachmentUrl = fileDoc.file_url;
+                attachmentName = fileDoc.file_name;
+                $('#wb-file-name').text(attachmentName);
+                setStat(`Attachment '${attachmentName}' uploaded.`, '#166b48');
+            }
         });
     });
 
@@ -406,6 +382,14 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
             return;
         }
 
+        const needsAttachment = ['documentation', 'image', 'video'].includes(
+            (selectedTemplate.format || '').toLowerCase()
+        );
+        if (needsAttachment && !attachmentUrl) {
+            setStat('Upload the template attachment before sending.', '#b63b3b');
+            return;
+        }
+
         const selectedNames = selectedGroup.members || [];
         const selectedCustomers = customers.filter(c => selectedNames.includes(c.name));
 
@@ -422,43 +406,42 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
             return;
         }
 
-        const now = new Date();
         const campaignName = ($('#wb-name').val() || `Template: ${selectedTemplate.template_name}`).trim();
-        const previewText = selectedTemplate.body_text || `Template ${selectedTemplate.template_name}`;
 
-        const payload = {
-            id: `sim-${Date.now()}`,
-            campaign_name: campaignName,
-            group_id: selectedGroup.id,
-            group_name: selectedGroup.name,
-            template_name: selectedTemplate.template_name,
-            message: `[Template] ${selectedTemplate.template_name}: ${previewText}`,
-            preview_text: previewText,
-            image_data_urls: imageDataUrls,
-            image_data_url: imageDataUrls[0] || '',
-            recipients: selectedRecipients,
-            recipient_count: selectedRecipients.length,
-            time: now.toTimeString().slice(0, 5),
-            iso_timestamp: now.toISOString()
-        };
-
-        queueBroadcastJob(payload);
-
-        history.unshift({
-            id: payload.id,
-            campaign_name: payload.campaign_name,
-            group_name: payload.group_name,
-            template_name: payload.template_name,
-            recipient_count: payload.recipient_count,
-            preview_text: payload.preview_text,
-            iso_timestamp: payload.iso_timestamp
-        });
-
-        saveHistory();
-        renderHistory();
-
-        setStat(`Template '${payload.template_name}' queued to ${selectedRecipients.length} recipients in ${selectedGroup.name}.`, '#166b48');
-        frappe.show_alert({ message: `Template broadcast queued for ${selectedRecipients.length} recipients`, indicator: 'green' }, 4);
+        frappe.confirm(
+            __(
+                'Send template {0} with attachment {1} to {2} customer(s)? WhatsApp messages cannot be recalled.',
+                [selectedTemplate.template_name, attachmentName || '-', selectedRecipients.length]
+            ),
+            function() {
+                setStat('Creating and queueing the broadcast...', '#60786b');
+                frappe.call({
+                    method: 'whatsapp_integration.erpnext_whatsapp.doctype.broadcast_message.broadcast_message.create_and_enqueue_broadcast',
+                    args: {
+                        campaign_name: campaignName,
+                        template_name: selectedTemplate.template_name,
+                        customer_names: selectedRecipients.map(recipient => recipient.customer),
+                        document_url: attachmentUrl
+                    },
+                    freeze: true,
+                    freeze_message: __('Queueing real WhatsApp broadcast...'),
+                    callback: function(r) {
+                        if (!r.message) return;
+                        const excluded = r.message.excluded_count || 0;
+                        const detail = excluded ? ` (${excluded} excluded)` : '';
+                        setStat(
+                            `Broadcast '${campaignName}' queued to ${r.message.recipient_count} recipients${detail}.`,
+                            '#166b48'
+                        );
+                        frappe.show_alert({
+                            message: `Real WhatsApp broadcast queued for ${r.message.recipient_count} recipients`,
+                            indicator: 'green'
+                        }, 8);
+                        loadHistory();
+                    }
+                });
+            }
+        );
     });
 
     $('#wb-open-chat').on('click', function() {
@@ -468,6 +451,7 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
     bootstrapGroups();
     loadTemplates();
     loadCustomers();
+    loadHistory();
     renderCustomersForGroup();
     updateTemplatePreview();
 };

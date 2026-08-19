@@ -57,7 +57,7 @@
    "fieldname": "language",
    "fieldtype": "Select",
    "label": "Language",
-   "options": "en_US"
+   "options": "en\nen_US"
   },
   {
    "fieldname": "column_break_mlwg",

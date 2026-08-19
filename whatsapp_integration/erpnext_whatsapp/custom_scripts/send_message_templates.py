@@ -5,9 +5,64 @@ import re
 import os
 from frappe import _
 
+
+def upload_whatsapp_template_media(document_url):
+    """Upload template header media once and return its WhatsApp media details."""
+    settings = frappe.get_single("Whatsapp Setting")
+    access_token = settings.get_password("access_token") or settings.get("access_token")
+    phone_number_id = settings.get("phone_number_id")
+
+    if not access_token or not phone_number_id:
+        frappe.throw("Missing Access Token or Phone Number ID in WhatsApp Settings")
+
+    file_doc = frappe.get_doc("File", {"file_url": document_url})
+    file_path = file_doc.get_full_path()
+
+    if not os.path.exists(file_path):
+        frappe.throw(f"File not found on server: {file_path}")
+
+    import mimetypes
+
+    mime_type = mimetypes.guess_type(file_doc.file_name)[0] or "application/pdf"
+    upload_url = f"https://graph.facebook.com/v24.0/{phone_number_id}/media"
+
+    try:
+        with open(file_path, "rb") as file_handle:
+            upload_response = requests.post(
+                upload_url,
+                files={"file": (file_doc.file_name, file_handle, mime_type)},
+                data={"messaging_product": "whatsapp", "type": mime_type},
+                headers={"Authorization": f"Bearer {access_token}"},
+                timeout=60,
+            )
+
+        upload_result = upload_response.json()
+        media_id = upload_result.get("id")
+        if not media_id:
+            error_msg = upload_result.get("error", {}).get("message", str(upload_result))
+            frappe.log_error(
+                f"Failed to upload media: {error_msg}\n\nResponse: {json.dumps(upload_result, indent=2)}",
+                "WhatsApp Media Upload",
+            )
+            frappe.throw(f"Failed to upload media to WhatsApp: {error_msg}")
+
+        return {"id": media_id, "filename": file_doc.file_name}
+    except requests.exceptions.RequestException as exc:
+        frappe.log_error(f"Network error uploading to WhatsApp: {exc}", "WhatsApp Network Error")
+        frappe.throw(f"Network error - {exc}")
+
+
 ### Send Whatsapp Message Template for Payment Entries
 @frappe.whitelist()
-def send_whatsapp_template_message(phone, template_name, parameters=None, customer=None, document_url=None):
+def send_whatsapp_template_message(
+    phone,
+    template_name,
+    parameters=None,
+    customer=None,
+    document_url=None,
+    media_id=None,
+    media_filename=None,
+):
     # Load WhatsApp settings
     settings = frappe.get_single("Whatsapp Setting")
     ACCESS_TOKEN = settings.get_password("access_token") or settings.get("access_token")
@@ -50,84 +105,27 @@ def send_whatsapp_template_message(phone, template_name, parameters=None, custom
     
     # HEADER component - Upload PDF to WhatsApp Cloud and get media ID
     header_type = (template.format or "").lower()
-    if header_type in ["image", "video", "documentation"] and document_url:
+    if header_type in ["image", "video", "documentation"] and (document_url or media_id):
         format_map = {
             "image": "image",
             "video": "video",
             "documentation": "document"
         }
-        
-        media_id = None
-        
-        try:
-            # Get WhatsApp settings
-            settings = frappe.get_single("Whatsapp Setting")
-            ACCESS_TOKEN = settings.get_password("access_token") or settings.get("access_token")
-            PHONE_NUMBER_ID = settings.get("phone_number_id")
-            
-            # Get file from server
-            file_doc = frappe.get_doc("File", {"file_url": document_url})
-            file_path = frappe.get_site_path("public", file_doc.file_url.lstrip("/"))
-            
-            if not os.path.exists(file_path):
-                frappe.throw(f"File not found on server: {file_path}")
-            
-            import mimetypes
-            mime_type = mimetypes.guess_type(file_doc.file_name)[0] or "application/pdf"
-            
-            # Use a descriptive filename for WhatsApp
-            display_filename = file_doc.file_name
-            
-            # Upload to WhatsApp Cloud Media endpoint
-            upload_url = f"https://graph.facebook.com/v24.0/{PHONE_NUMBER_ID}/media"
-            
-            with open(file_path, "rb") as f:
-                files = {
-                    'file': (display_filename, f, mime_type)
-                }
-                data = {
-                    'messaging_product': 'whatsapp',
-                    'type': mime_type
-                }
-                
-                upload_response = requests.post(
-                    upload_url,
-                    files=files,
-                    data=data,
-                    headers={"Authorization": f"Bearer {ACCESS_TOKEN}"},
-                    timeout=60
-                )
-            
-            upload_result = upload_response.json()
-            
-            media_id = upload_result.get("id")
-            
-            if not media_id:
-                error_msg = upload_result.get("error", {}).get("message", str(upload_result))
-                frappe.log_error(f"Failed to upload media: {error_msg}\n\nResponse: {json.dumps(upload_result, indent=2)}", "WhatsApp Media Upload")
-                frappe.throw(f"Failed to upload media to WhatsApp: {error_msg}")
-            
-            # Add header component with media ID and filename
-            components.append({
-                "type": "header",
-                "parameters": [
-                    {
-                        "type": format_map[header_type],
-                        format_map[header_type]: {
-                            "id": media_id,
-                            "filename": display_filename  # Add filename for proper display
-                        }
-                    }
-                ]
-            })
-            
-        except requests.exceptions.RequestException as e:
-            frappe.log_error(f"Network error uploading to WhatsApp: {str(e)}", "WhatsApp Network Error")
-            frappe.throw(f"Network error - {str(e)}")
-            
-        except Exception as e:
-            frappe.log_error(f"Failed to upload media to WhatsApp: {str(e)}", "WhatsApp Media Upload")
-            frappe.throw(f"Failed to upload document - {str(e)}")
+
+        if not media_id:
+            media = upload_whatsapp_template_media(document_url)
+            media_id = media["id"]
+            media_filename = media["filename"]
+
+        media_type = format_map[header_type]
+        media_value = {"id": media_id}
+        if media_type == "document" and media_filename:
+            media_value["filename"] = media_filename
+
+        components.append({
+            "type": "header",
+            "parameters": [{"type": media_type, media_type: media_value}],
+        })
     
     # BODY component with NAMED parameters
     if parameters and template.body_text:

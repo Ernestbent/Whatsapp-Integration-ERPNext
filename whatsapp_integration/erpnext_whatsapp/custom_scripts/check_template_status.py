@@ -20,7 +20,7 @@ def check_whatsapp_template_status(docname):
 
     # Meta API endpoint
     url = f"https://graph.facebook.com/v24.0/{doc.id}"
-    params = {"fields": "status"}
+    params = {"fields": "status,name,language,category,parameter_format"}
     headers = {"Authorization": f"Bearer {ACCESS_TOKEN}"}
 
     # API Call
@@ -51,12 +51,27 @@ def check_whatsapp_template_status(docname):
 
     erp_status = status_map.get(meta_status, meta_status)
 
-    # Update ERPNext DocType
-    doc.db_set("status", erp_status, update_modified=True)
+    updates = {"status": erp_status}
+    if res.get("language"):
+        updates["language"] = res["language"]
+    if res.get("category"):
+        updates["category"] = res["category"].lower()
+    if res.get("parameter_format"):
+        updates["parameter_format"] = res["parameter_format"].lower()
+
+    frappe.db.set_value(
+        "Whatsapp Message Template",
+        doc.name,
+        updates,
+        update_modified=True,
+    )
 
     return {
         "success": True,
         "template_id": doc.id,
         "meta_status": meta_status,
-        "status": erp_status
+        "status": erp_status,
+        "language": updates.get("language", doc.language),
+        "category": updates.get("category", doc.category),
+        "parameter_format": updates.get("parameter_format", doc.parameter_format),
     }

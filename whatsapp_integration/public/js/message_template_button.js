@@ -40,7 +40,7 @@ frappe.ui.form.on("Whatsapp Message Template", {
                             frappe.msgprint({
                                 title: "Template Status",
                                 message: `Status: <b>${status}</b>`,
-                                indicator: status === "APPROVED" ? "green" : "orange"
+                                indicator: status === "Approved" ? "green" : "orange"
                             });
 
                             frm.reload_doc();

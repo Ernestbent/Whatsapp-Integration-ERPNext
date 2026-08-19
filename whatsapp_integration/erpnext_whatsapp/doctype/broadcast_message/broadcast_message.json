@@ -17,7 +17,16 @@
   "column_break_gykr",
   "template_id",
   "section_break_fznu",
-  "customers"
+  "customers",
+  "tracking_section",
+  "send_status",
+  "recipient_count",
+  "column_break_tracking",
+  "sent_count",
+  "failed_count",
+  "skipped_count",
+  "queued_on",
+  "completed_on"
  ],
  "fields": [
   {
@@ -87,6 +96,63 @@
    "fieldname": "attach_blia",
    "fieldtype": "Attach",
    "label": "Upload"
+  },
+  {
+   "fieldname": "tracking_section",
+   "fieldtype": "Section Break",
+   "label": "Broadcast Tracking"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "send_status",
+   "fieldtype": "Select",
+   "label": "Send Status",
+   "options": "Draft\nQueued\nSending\nCompleted\nCompleted with issues\nFailed",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "recipient_count",
+   "fieldtype": "Int",
+   "label": "Recipients",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_tracking",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "sent_count",
+   "fieldtype": "Int",
+   "label": "Sent",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "failed_count",
+   "fieldtype": "Int",
+   "label": "Failed",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "skipped_count",
+   "fieldtype": "Int",
+   "label": "Skipped",
+   "read_only": 1
+  },
+  {
+   "fieldname": "queued_on",
+   "fieldtype": "Datetime",
+   "label": "Queued On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "completed_on",
+   "fieldtype": "Datetime",
+   "label": "Completed On",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
