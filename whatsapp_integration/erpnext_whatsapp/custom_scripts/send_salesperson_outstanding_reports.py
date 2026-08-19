@@ -36,12 +36,12 @@ TEMPLATE_FOOTER = "Autozone Professional Limited"
 PDF_DECIMAL_PLACES = Decimal("0.01")
 SALES_PERSON_USER_OVERRIDES = {
     "jolie": "jolly@autozonepro.org",
-    "michael": "michael@autozonepro.com",
-    "moses": "moses@autozonepro.com",
-    "owen": "owen@autozonepro.com",
-    "rhoda": "rhoda@autozonepro.com",
+    "michael": "michael@autozonepro.org",
+    "moses": "moses@autozonepro.org",
+    "owen": "owen@autozonepro.org",
+    "rhoda": "rhoda@autozonepro.org",
     "rhodah": "rhodahnakku6@gmail.com",
-    "rony": "ronald@autozonepro.com",
+    "rony": "ronald@autozonepro.org",
 }
 
 
