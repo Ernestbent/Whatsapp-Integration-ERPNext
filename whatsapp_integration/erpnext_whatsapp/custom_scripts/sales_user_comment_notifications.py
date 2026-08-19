@@ -11,9 +11,7 @@ ALLOWED_CREDIT_CONTROLLER_EMAILS = {
     "developer@autozonepro.org",
     "outstanding@autozonepro.org"
 }
-ADDITIONAL_COMMENT_NOTIFICATION_NUMBERS = {
-    "+256 755 829642",
-}
+ADDITIONAL_COMMENT_NOTIFICATION_NUMBERS = set()
 
 CREDIT_CONTROLLER_ROLE = "Credit Controller"
 SALES_USER_ROLE = "Sales User"
