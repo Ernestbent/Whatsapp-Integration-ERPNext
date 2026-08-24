@@ -394,7 +394,9 @@ def _resolve_manager_recipients():
         )
         seen_numbers.add(phone)
 
-    for recipient_name, raw_phone in ADDITIONAL_MANAGER_RECIPIENTS:
+    site_override = (frappe.conf.get("whatsapp_test_recipient") or "").strip()
+    for recipient_name, default_phone in ADDITIONAL_MANAGER_RECIPIENTS:
+        raw_phone = site_override or default_phone
         phone = _normalize_phone(raw_phone)
         if not phone:
             skipped.append(

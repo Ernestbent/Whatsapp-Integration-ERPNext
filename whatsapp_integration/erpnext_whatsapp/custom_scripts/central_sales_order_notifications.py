@@ -23,10 +23,11 @@ TEMPLATE_BODY = """New Sales Order for *Central Region*
 *Amount:* UGX {{5}}
 
 Please find the Sales Order details."""
+OVERRIDABLE_RECIPIENT_NUMBER = "0755829642"
 RECIPIENT_NUMBERS = {
     "0750229862",
-    "0755829642",
-    "0758116526"
+    OVERRIDABLE_RECIPIENT_NUMBER,
+    "0758116526",
 }
 CENTRAL_SALES_USER_EMAILS = {
     "rhodahnakku6@gmail.com",
@@ -48,17 +49,29 @@ def _normalize_email(value):
 
 
 def _normalize_phone(value):
-    digits = re.sub(r"\D", "", str(value or ""))
+    raw_value = str(value or "").strip()
+    digits = re.sub(r"\D", "", raw_value)
+    has_international_prefix = raw_value.startswith("+") or digits.startswith("00")
+
     if digits.startswith("00"):
         digits = digits[2:]
+
     if digits.startswith("2560"):
         digits = "256" + digits[4:]
     elif digits.startswith("0"):
         digits = "256" + digits[1:]
-    elif digits and not digits.startswith("256"):
+    elif not has_international_prefix and len(digits) == 9:
         digits = "256" + digits
 
-    return digits if len(digits) == 12 and digits.startswith("256") else ""
+    return digits if re.fullmatch(r"[1-9]\d{7,14}", digits) else ""
+
+
+def _get_recipient_numbers():
+    site_override = (frappe.conf.get("whatsapp_test_recipient") or "").strip()
+    return {
+        site_override if phone == OVERRIDABLE_RECIPIENT_NUMBER and site_override else phone
+        for phone in RECIPIENT_NUMBERS
+    }
 
 
 def _safe_filename(value):
@@ -361,7 +374,8 @@ def send_central_sales_order_async(doc_name):
 
         failures = []
         success_count = 0
-        for phone in RECIPIENT_NUMBERS:
+        recipient_numbers = _get_recipient_numbers()
+        for phone in recipient_numbers:
             result = _send_template(phone, pdf_doc, parameters)
             if result.get("success"):
                 success_count += 1
@@ -370,7 +384,7 @@ def send_central_sales_order_async(doc_name):
 
         if success_count:
             frappe.log_error(
-                f"Central Sales Order sent to {success_count}/{len(RECIPIENT_NUMBERS)} recipients for {doc_name}",
+                f"Central Sales Order sent to {success_count}/{len(recipient_numbers)} recipients for {doc_name}",
                 "Central Sales Order WhatsApp Success",
             )
         if failures:

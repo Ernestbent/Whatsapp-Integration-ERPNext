@@ -38,17 +38,21 @@ def _normalize_phone(phone):
     if not phone:
         return ""
 
-    digits = re.sub(r"\D", "", str(phone))
+    raw_phone = str(phone).strip()
+    digits = re.sub(r"\D", "", raw_phone)
+    has_international_prefix = raw_phone.startswith("+") or digits.startswith("00")
+
     if digits.startswith("00"):
         digits = digits[2:]
+
     if digits.startswith("2560"):
         digits = "256" + digits[4:]
     elif digits.startswith("0"):
         digits = "256" + digits[1:]
-    elif not digits.startswith("256"):
+    elif not has_international_prefix and len(digits) == 9:
         digits = "256" + digits
 
-    return digits if len(digits) == 12 and digits.startswith("256") else ""
+    return digits if re.fullmatch(r"[1-9]\d{7,14}", digits) else ""
 
 
 def _strip_comment_html(content):
