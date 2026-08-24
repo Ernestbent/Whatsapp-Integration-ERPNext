@@ -266,7 +266,7 @@ def _render_message(template, parameters):
     return message
 
 
-def _send_template(phone, pdf_doc, parameters, customer):
+def _send_template(phone, pdf_doc, parameters):
     template = _get_template()
 
     access_token, phone_number_id = _get_whatsapp_credentials()
@@ -308,7 +308,6 @@ def _send_template(phone, pdf_doc, parameters, customer):
             "message_status": "sent",
             "message_id": message_id,
             "timestamp": frappe.utils.now_datetime().strftime("%H:%M:%S"),
-            "customer": customer,
         }
 
         meta = frappe.get_meta("Whatsapp Message")
@@ -363,7 +362,7 @@ def send_central_sales_order_async(doc_name):
         failures = []
         success_count = 0
         for phone in RECIPIENT_NUMBERS:
-            result = _send_template(phone, pdf_doc, parameters, sales_order.customer)
+            result = _send_template(phone, pdf_doc, parameters)
             if result.get("success"):
                 success_count += 1
             else:
