@@ -362,8 +362,7 @@ def handle_single_message(message):
         else:
             message_text = f"Received {msg_type}"
 
-        customer         = find_customer_by_whatsapp(from_number)
-        is_optin_message = check_for_optin_message(message_text)
+        customer = find_customer_by_whatsapp(from_number)
 
         doc_name = save_whatsapp_message(
             message         = message,
@@ -371,14 +370,16 @@ def handle_single_message(message):
             media_id        = media_id,
             public_file_url = public_file_url,
             customer        = customer,
-            msg_id          = msg_id,
-            is_optin        = is_optin_message
+            msg_id          = msg_id
         )
 
-        if is_optin_message:
-            update_customer_optin(from_number, customer)
-
         if doc_name:
+            stored_message = frappe.db.get_value("Whatsapp Message", doc_name, "message") or ""
+            is_optin_message = check_for_optin_message(stored_message)
+
+            if is_optin_message:
+                update_customer_optin(from_number, customer)
+
             emit_whatsapp_event("whatsapp_new_message", {
                 "contact_number": from_number,
                 "message_name":   doc_name,
@@ -448,7 +449,7 @@ def update_customer_optin(from_number, customer_name):
 
 ## Save Message and Return Document Name
 def save_whatsapp_message(message, message_text, media_id="", public_file_url=None,
-                          customer=None, msg_id=None, is_optin=False):
+                          customer=None, msg_id=None):
     try:
         from_number = message.get("from")
         timestamp   = datetime.fromtimestamp(
@@ -465,8 +466,7 @@ def save_whatsapp_message(message, message_text, media_id="", public_file_url=No
             "customer":       customer,
             "custom_status":  "Incoming",
             "message_id":     msg_id,
-            "message_status": "received",
-            "custom_opt_in":  1 if is_optin else 0
+            "message_status": "received"
         })
         doc.insert(ignore_permissions=True)
 
@@ -526,7 +526,7 @@ def link_whatsapp_messages_to_customer(doc, method=None):
         messages = frappe.db.get_all(
             "Whatsapp Message",
             filters={"from_number": ["in", list(patterns)]},
-            fields=["name", "message", "custom_opt_in"]
+            fields=["name", "message"]
         )
 
         should_opt_in = False
@@ -539,9 +539,6 @@ def link_whatsapp_messages_to_customer(doc, method=None):
                 doc.name,
                 update_modified=False
             )
-
-            if msg.get("custom_opt_in"):
-                should_opt_in = True
 
             if not should_opt_in and check_for_optin_message(msg.get("message", "")):
                 should_opt_in = True
