@@ -748,7 +748,7 @@ function render_whatsapp_messages(messages) {
         const unread_count = d.messages.length;
 
         html += `<a href="#" class="d-block px-4 py-3 text-decoration-none border-bottom position-relative whatsapp-chat-link"
-            onclick="handle_chat_click('${frappe.utils.escape_html(d.from_number)}', event)"
+            onclick="handle_chat_click('${frappe.utils.escape_html(d.from_number)}', '${frappe.utils.escape_html(latest.name)}', event)"
             style="background: white;">
             <div class="d-flex align-items-center justify-content-between mb-1">
                 <strong style="font-size:14px;">${frappe.utils.escape_html(d.display_name)}</strong>
@@ -764,7 +764,7 @@ function render_whatsapp_messages(messages) {
 }
 
 // Handle chat click with improved storage
-window.handle_chat_click = function(from_number, event) {
+window.handle_chat_click = function(from_number, message_name, event) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -774,6 +774,7 @@ window.handle_chat_click = function(from_number, event) {
 
     // Store the raw from_number as is
     sessionStorage.setItem('whatsapp_selected_contact', from_number);
+    sessionStorage.setItem('whatsapp_selected_message', message_name);
     console.log('Stored contact:', from_number);
 
     const current_route = frappe.get_route();

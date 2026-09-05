@@ -26,10 +26,12 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             /* Sidebar */
             .wa-sidebar {
                 width: 380px;
+                min-height: 0;
                 background: white;
                 border-right: 1px solid #e9edef;
                 display: flex;
                 flex-direction: column;
+                overflow: hidden;
                 transition: transform 0.3s ease;
             }
             .wa-sidebar-header {
@@ -54,7 +56,19 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             }
             .wa-chat-list {
                 flex: 1;
+                min-height: 0;
                 overflow-y: auto;
+                overflow-x: hidden;
+                overscroll-behavior: contain;
+                scrollbar-gutter: stable;
+                padding-bottom: env(safe-area-inset-bottom, 0);
+            }
+            .wa-chat-list::-webkit-scrollbar {
+                width: 8px;
+            }
+            .wa-chat-list::-webkit-scrollbar-thumb {
+                background: rgba(84, 101, 111, 0.45);
+                border-radius: 4px;
             }
             .wa-chat-item {
                 padding: 15px;
@@ -180,6 +194,10 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 display: flex;
                 margin-bottom: 8px;
                 animation: fadeIn 0.3s ease;
+            }
+            .wa-message.wa-selected-message .wa-message-content {
+                outline: 3px solid rgba(37, 211, 102, 0.65);
+                box-shadow: 0 0 0 6px rgba(37, 211, 102, 0.14);
             }
             @keyframes fadeIn {
                 from { opacity: 0; transform: translateY(10px); }
@@ -1261,9 +1279,8 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
             args: {
                 doctype: "Whatsapp Message",
                 fields: ["name", "customer", "customer.customer_name as customer_name", "custom_user", "custom_user.first_name as user_first_name", "from_number", "message", "creation", "custom_status", "custom_read", "message_status"],
-                filters: [["message", "!=", ""]],
                 order_by: "creation desc",
-                limit_page_length: 500
+                limit_page_length: 0
             },
             callback(r) {
                 if (!r.message) return;
@@ -1337,6 +1354,22 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
         setTimeout(() => scrollToBottom(true), 300);
         setTimeout(() => scrollToBottom(true), 500);
     };
+
+    function scroll_to_selected_message() {
+        const messageName = sessionStorage.getItem('whatsapp_selected_message');
+        if (!messageName) return false;
+
+        const target = Array.from(document.querySelectorAll('.wa-message')).find(
+            message => message.dataset.messageId === messageName
+        );
+        if (!target) return false;
+
+        sessionStorage.removeItem('whatsapp_selected_message');
+        target.scrollIntoView({behavior: 'smooth', block: 'center'});
+        target.classList.add('wa-selected-message');
+        setTimeout(() => target.classList.remove('wa-selected-message'), 1800);
+        return true;
+    }
 
     function show_cached_messages(contact_number) {
         $("#wa-empty-state").hide();
@@ -1439,7 +1472,7 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 fields: ["name","message","from_number","creation","custom_status","custom_document","custom_read","message_id","message_type","timestamp","message_status","customer"],
                 filters: [["from_number", "=", contact_number]],
                 order_by: "creation asc",
-                limit_page_length: 1000
+                limit_page_length: 0
             },
             callback(r) {
                 $("#wa-loading").hide();
@@ -1494,9 +1527,13 @@ frappe.pages['whatsapp'].on_page_load = function(wrapper) {
                 if (active_contact === contact_number) {
                     if (html) {
                         $("#wa-empty-state").hide();
+                        let messagesRendered = false;
                         if (hasChanged || $("#wa-messages-area").html() !== html) {
                             $("#wa-messages-area").html(html);
                             append_simulated_messages_to_active_chat(contact_number);
+                            messagesRendered = true;
+                        }
+                        if (!scroll_to_selected_message() && messagesRendered) {
                             scrollToBottomDelayed();
                         }
                         sync_sidebar_with_chat_panel(contact_number);
