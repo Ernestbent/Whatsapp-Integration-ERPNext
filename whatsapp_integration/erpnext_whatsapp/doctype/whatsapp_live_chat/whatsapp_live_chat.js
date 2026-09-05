@@ -455,7 +455,7 @@ frappe.ui.form.on("Whatsapp Live Chat", {
                     filters:[["from_number","=",contact_number]],
                     fields:["name","message","custom_status","timestamp","message_status","message_type","custom_document","media_id"],
                     order_by:"creation asc",
-                    limit_page_length:500
+                    limit_page_length:0
                 },
                 callback:function(r){
                     if(!r.message) return;
