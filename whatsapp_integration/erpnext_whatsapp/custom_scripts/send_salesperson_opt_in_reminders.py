@@ -15,10 +15,9 @@ TEMPLATE_NAME = "opt_in_reminders"
 TEMPLATE_LANGUAGE = "en"
 TEMPLATE_BODY = (
     "Good morning,\n\n"
-    "Please be informed that effective *1st September*, customers who have not opted in "
-    "and updated their locations will not be billed.\n\n"
-    "Kindly ensure that the required opt-ins are obtained and customer locations are "
-    "updated before the deadline.\n\n"
+    "Due to technical challenges encountered while updating customer locations, the "
+    "deadline has been extended to *15th September*. \n\n"
+    "Kindly ensure all customer opt-ins and location updates are completed by then.\n\n"
     "Thank you."
 )
 
