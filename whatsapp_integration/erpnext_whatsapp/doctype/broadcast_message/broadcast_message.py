@@ -109,7 +109,7 @@ def get_eligible_customers():
 			"custom_opt_in": 1,
 			"whatsapp_number": ["is", "set"],
 		},
-		fields=["name", "customer_name", "whatsapp_number"],
+		fields=["name", "customer_name", "whatsapp_number", "region", "district", "location"],
 		order_by="customer_name asc",
 	)
 

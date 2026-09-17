@@ -1,117 +1,202 @@
 frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
     const page = frappe.ui.make_app_page({
         parent: wrapper,
-        title: 'Whatsapp BroadCast',
+        title: 'Broadcast Message',
         single_column: true
     });
+    page.wrapper.find('.page-head').hide();
+    page.main.addClass('wb-page-main');
 
     page.main.html(`
         <style>
-            .wb-shell { min-height: calc(100vh - 120px); background: radial-gradient(circle at top left, #e6fff4 0%, #edf4ff 45%, #fff8ed 100%); padding: 24px; }
-            .wb-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 16px; }
-            .wb-stack { display: grid; gap: 16px; }
-            .wb-card { background: #fff; border: 1px solid #deebe4; border-radius: 16px; box-shadow: 0 14px 32px rgba(7, 54, 38, 0.08); padding: 18px; }
-            .wb-title { margin: 0; font-size: 24px; color: #13422f; }
-            .wb-sub { margin: 6px 0 0; color: #5f776a; }
-            .wb-field { margin-top: 14px; }
-            .wb-field label { display: block; margin-bottom: 6px; font-weight: 600; color: #294739; }
-            .wb-input, .wb-select { width: 100%; border: 1px solid #ccddd4; border-radius: 10px; padding: 10px 12px; background: #fbfefd; }
-            .wb-recipients { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin-top: 10px; max-height: 260px; overflow: auto; border: 1px dashed #cde0d6; border-radius: 10px; padding: 10px; background: #fcfffd; }
-            .wb-chip { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: #264535; }
-            .wb-chip small { color: #5f776a; }
-            .wb-chip .no-wa { color: #af2f2f; }
-            .wb-preview { border: 1px solid #d9e6df; border-radius: 12px; background: #f8fcfa; padding: 10px; }
-            .wb-preview-img { max-width: 100%; border-radius: 10px; display: none; margin-bottom: 8px; }
-            .wb-preview-gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
-            .wb-preview-gallery img { width: 100%; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid #d5e3dc; }
-            .wb-bubble { margin-left: auto; max-width: 85%; background: #d9fdd3; border-radius: 10px 10px 2px 10px; padding: 10px; color: #163d2d; }
-            .wb-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
-            .wb-btn { border: none; border-radius: 10px; padding: 10px 14px; cursor: pointer; font-weight: 700; }
-            .wb-btn-send { background: #167a4f; color: #fff; }
-            .wb-btn-secondary { background: #e8f3ed; color: #164732; }
-            .wb-btn-danger { background: #ffe9e9; color: #8a1d1d; }
-            .wb-stat { font-size: 13px; color: #60786b; margin-top: 8px; }
-            .wb-history { display: grid; gap: 8px; max-height: 300px; overflow: auto; margin-top: 8px; }
-            .wb-history-item { border: 1px solid #e2ece7; border-radius: 10px; padding: 10px; background: #fbfefd; }
-            .wb-history-name { font-weight: 700; color: #184332; }
-            .wb-history-meta { font-size: 12px; color: #5f776a; margin-top: 3px; }
-            .wb-history-msg { margin-top: 6px; color: #2b493b; font-size: 13px; }
-            @media (max-width: 900px) { .wb-grid { grid-template-columns: 1fr; } }
+            .wb-page-main { padding: 0 !important; }
+            .wb-shell {
+                --wb-bg: #f0f2f5; --wb-panel: #fff; --wb-alt: #f7f8fa; --wb-line: #e2e5e8;
+                --wb-text: #111b21; --wb-muted: #667781; --wb-teal: #075e54;
+                --wb-green: #25d366; --wb-green-dark: #128c7e; --wb-bubble: #dcf8c6;
+                min-height: calc(100vh - 112px); background: var(--wb-bg); color: var(--wb-text);
+                font-family: "Inter", "Segoe UI", sans-serif;
+            }
+            .wb-shell * { box-sizing: border-box; }
+            .wb-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 19px 30px; border-radius: 10px; background: var(--wb-teal); color: #fff; }
+            .wb-header h1 { margin: 0; color: #fff !important; font-size: 20px; font-weight: 650; letter-spacing: .2px; }
+            .wb-site-tag { color: #cfe9e4; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+            .wb-console { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 1px; background: var(--wb-line); }
+            .wb-audience, .wb-compose { background: var(--wb-panel); padding: 24px; }
+            .wb-section-title { margin: 0 0 18px; color: var(--wb-muted); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+            .wb-field { margin-bottom: 15px; }
+            .wb-field label { display: block; margin-bottom: 6px; color: var(--wb-muted); font-size: 12px; font-weight: 500; }
+            .wb-input, .wb-select { width: 100%; min-height: 38px; padding: 9px 10px; border: 1px solid var(--wb-line); border-radius: 5px; outline: none; background: var(--wb-alt); color: var(--wb-text); font-size: 13px; }
+            .wb-input:focus, .wb-select:focus { border-color: var(--wb-green-dark); box-shadow: 0 0 0 2px rgba(18, 140, 126, .12); }
+            .wb-inline { display: flex; gap: 7px; }
+            .wb-inline .wb-input { min-width: 0; }
+            .wb-btn { min-height: 36px; padding: 8px 12px; border: 1px solid transparent; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: 650; transition: background .15s ease, border-color .15s ease; }
+            .wb-btn-send { padding-inline: 20px; background: var(--wb-green); color: #062c1c; }
+            .wb-btn-send:hover { background: #1fbd5a; }
+            .wb-btn-secondary { border-color: var(--wb-line); background: var(--wb-alt); color: #1f3932; }
+            .wb-btn-secondary:hover { border-color: #b9c6c2; background: #eef1f2; }
+            .wb-btn-danger { border-color: #f2d3d3; background: #fff4f4; color: #a12626; }
+            .wb-icon-btn { width: 38px; flex: 0 0 38px; padding: 0; font-size: 18px; }
+            .wb-audience-total { margin: 20px 0; padding-top: 18px; border-top: 1px solid var(--wb-line); }
+            .wb-audience-total strong { display: block; color: var(--wb-green-dark); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 34px; font-weight: 500; line-height: 1; }
+            .wb-audience-total span { display: block; margin-top: 5px; color: var(--wb-muted); font-size: 12px; }
+            .wb-list-head { display: flex; align-items: center; justify-content: space-between; margin: 16px 0 7px; color: var(--wb-muted); font-size: 11px; }
+            .wb-recipients { max-height: 270px; overflow: auto; border: 1px solid var(--wb-line); border-radius: 5px; background: var(--wb-alt); }
+            .wb-chip { display: flex; gap: 9px; align-items: flex-start; margin: 0; padding: 9px 10px; border-bottom: 1px solid var(--wb-line); color: var(--wb-text); font-size: 12px; cursor: pointer; }
+            .wb-chip:last-child { border-bottom: 0; }
+            .wb-chip:hover { background: #eef7f3; }
+            .wb-chip input { margin-top: 3px; accent-color: var(--wb-green-dark); }
+            .wb-chip span { min-width: 0; overflow: hidden; }
+            .wb-chip strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+            .wb-chip small { display: block; color: var(--wb-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+            .wb-chip .wb-customer-meta { margin-top: 2px; color: #7d8b92; font-family: "Inter", "Segoe UI", sans-serif; font-size: 10px; }
+            .wb-audience-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 8px; }
+            .wb-compose-grid { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(260px, .8fr); gap: 24px; }
+            .wb-upload-row { display: flex; align-items: center; gap: 10px; }
+            .wb-file-name { min-width: 0; overflow: hidden; color: var(--wb-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+            .wb-media-picker { display: flex; align-items: center; gap: 9px; min-height: 74px; padding: 10px; overflow-x: auto; border: 1px solid var(--wb-line); border-radius: 10px; background: #fff; }
+            .wb-media-items { display: flex; align-items: center; gap: 9px; }
+            .wb-media-tile, .wb-add-media { position: relative; width: 58px; height: 58px; flex: 0 0 58px; overflow: hidden; border: 1px solid #c8d0d3; border-radius: 9px; background: #fff; }
+            .wb-media-tile.is-first { border: 2px solid var(--wb-green); }
+            .wb-media-tile img { width: 100%; height: 100%; object-fit: cover; }
+            .wb-remove-media { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: rgba(8, 13, 13, .8); color: #fff; font-size: 13px; line-height: 18px; cursor: pointer; }
+            .wb-add-media { display: grid; place-items: center; color: var(--wb-teal); font-size: 28px; font-weight: 300; cursor: pointer; }
+            .wb-add-media:hover { border-color: var(--wb-green-dark); background: #eef7f3; }
+            .wb-attachment-meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; color: var(--wb-muted); font-size: 10px; }
+            .wb-attachment-meta .wb-carousel-warning { color: #9a7100; }
+            .wb-file-upload { margin-top: 8px; }
+            .wb-preview { min-height: 224px; padding: 18px 14px; border: 1px solid var(--wb-line); border-radius: 14px; background: #e5ddd5; }
+            .wb-preview-media { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; width: 90%; margin: 0 0 5px auto; }
+            .wb-preview-media:empty { display: none; }
+            .wb-preview-media img { width: 100%; height: 92px; object-fit: cover; border-radius: 6px; }
+            .wb-preview-media img:only-child { grid-column: 1 / -1; height: 150px; }
+            .wb-preview-label { margin-bottom: 13px; color: var(--wb-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; text-align: center; }
+            .wb-bubble { position: relative; max-width: 90%; margin-left: auto; padding: 10px 12px 20px; border-radius: 8px 8px 2px 8px; background: var(--wb-bubble); color: var(--wb-text); font-size: 13px; line-height: 1.45; white-space: normal; }
+            .wb-bubble::after { content: "now  ✓✓"; position: absolute; right: 9px; bottom: 5px; color: #5c8a3f; font-size: 9px; }
+            .wb-preview-note { margin: 8px 0 0; color: var(--wb-muted); font-size: 11px; }
+            .wb-send-row { display: flex; align-items: center; gap: 13px; margin-top: 21px; padding-top: 18px; border-top: 1px solid var(--wb-line); }
+            .wb-send-note, .wb-stat { color: var(--wb-muted); font-size: 12px; }
+            .wb-stat { margin-top: 8px; }
+            .wb-history-section { padding: 20px 30px 28px; border-top: 1px solid var(--wb-line); background: var(--wb-alt); }
+            .wb-history-wrap { overflow-x: auto; }
+            .wb-history { width: 100%; border-collapse: collapse; background: transparent; font-size: 12px; }
+            .wb-history th { padding: 7px 10px; border-bottom: 1px solid var(--wb-line); color: var(--wb-muted); font-size: 10px; font-weight: 600; letter-spacing: .03em; text-align: left; text-transform: uppercase; }
+            .wb-history td { padding: 10px; border-bottom: 1px solid var(--wb-line); vertical-align: middle; }
+            .wb-history td:not(:first-child) { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+            .wb-history a { color: var(--wb-teal); font-weight: 650; }
+            .wb-status { display: inline-block; padding: 3px 8px; border-radius: 3px; background: rgba(185,137,0,.14); color: #8b6800; font-family: "Inter", "Segoe UI", sans-serif; font-size: 10px; text-transform: lowercase; }
+            .wb-status-completed, .wb-status-sent { background: rgba(37,211,102,.16); color: #087b57; }
+            .wb-status-failed { background: rgba(208,50,50,.12); color: #a12626; }
+            .wb-empty { padding: 22px 10px !important; color: var(--wb-muted); text-align: center; }
+            @media (max-width: 900px) { .wb-console, .wb-compose-grid { grid-template-columns: 1fr; } .wb-recipients { max-height: 220px; } }
+            @media (max-width: 520px) { .wb-header, .wb-audience, .wb-compose, .wb-history-section { padding-left: 16px; padding-right: 16px; } .wb-site-tag { display: none; } .wb-send-row { align-items: stretch; flex-direction: column; } }
         </style>
 
         <div class="wb-shell">
-            <div class="wb-grid">
-                <div class="wb-stack">
-                    <div class="wb-card">
-                        <h2 class="wb-title">Template Broadcast Composer</h2>
-                        <p class="wb-sub">Template-only sending. Pick approved template, target group, and track history.</p>
+            <header class="wb-header">
+                <h1>Broadcast Message</h1>
+                <span class="wb-site-tag">whatsapp_integration / approved templates</span>
+            </header>
 
-                        <div class="wb-field">
-                            <label for="wb-group">Target Group</label>
-                            <select class="wb-select" id="wb-group"></select>
-                        </div>
+            <div class="wb-console">
+                <aside class="wb-audience">
+                    <h2 class="wb-section-title">Recipient filters</h2>
+                    <div class="wb-field">
+                        <label for="wb-region">Region</label>
+                        <select class="wb-select wb-audience-filter" id="wb-region"><option value="">All regions</option></select>
+                    </div>
+                    <div class="wb-field">
+                        <label for="wb-district">District</label>
+                        <select class="wb-select wb-audience-filter" id="wb-district"><option value="">All districts</option></select>
+                    </div>
+                    <div class="wb-field">
+                        <label for="wb-location">Location</label>
+                        <input class="wb-input wb-audience-filter" id="wb-location" placeholder="e.g. Kawempe, Ntinda" />
+                    </div>
+                    <div class="wb-field">
+                        <label for="wb-sales-person">Sales person</label>
+                        <select class="wb-select wb-audience-filter" id="wb-sales-person"><option value="">All sales persons</option></select>
+                    </div>
+                    <div class="wb-audience-total">
+                        <strong id="wb-match-count">0</strong>
+                        <span>enabled customers match these filters</span>
+                    </div>
+                    <h2 class="wb-section-title">Saved audience</h2>
+                    <div class="wb-field">
+                        <label for="wb-group">Saved group</label>
+                        <select class="wb-select" id="wb-group"></select>
+                    </div>
+                    <div class="wb-inline">
+                        <input class="wb-input" id="wb-new-group" placeholder="New group name" aria-label="New group name" />
+                        <button class="wb-btn wb-btn-secondary wb-icon-btn" id="wb-create-group" title="Create group" aria-label="Create group">+</button>
+                        <button class="wb-btn wb-btn-danger wb-icon-btn" id="wb-delete-group" title="Delete selected group" aria-label="Delete selected group">&times;</button>
+                    </div>
+                    <div class="wb-field">
+                        <label for="wb-customer-search">Find customer</label>
+                        <input class="wb-input" id="wb-customer-search" placeholder="Name or WhatsApp number" />
+                    </div>
+                    <div class="wb-list-head"><span>Eligible customers</span><span id="wb-selected-count">0 selected</span></div>
+                    <div class="wb-recipients" id="wb-recipients"></div>
+                    <div class="wb-audience-actions">
+                        <button class="wb-btn wb-btn-secondary" id="wb-select-all">Select visible</button>
+                        <button class="wb-btn wb-btn-secondary" id="wb-save-members">Save audience</button>
+                    </div>
+                </aside>
 
-                        <div class="wb-field">
-                            <label for="wb-template">Approved Template</label>
-                            <select class="wb-select" id="wb-template"></select>
-                        </div>
-
-                        <div class="wb-field">
-                            <label for="wb-name">Campaign Name</label>
-                            <input class="wb-input" id="wb-name" placeholder="Weekend Promo" />
-                        </div>
-
-                        <div class="wb-field">
-                            <label>Template Attachment</label>
-                            <div class="wb-actions">
-                                <button class="wb-btn wb-btn-secondary" id="wb-upload">Upload File</button>
-                                <span class="wb-stat" id="wb-file-name">No file selected</span>
+                <main class="wb-compose">
+                    <h2 class="wb-section-title">Compose and preview</h2>
+                    <div class="wb-compose-grid">
+                        <div>
+                            <div class="wb-field">
+                                <label for="wb-template">Approved template</label>
+                                <select class="wb-select" id="wb-template"></select>
                             </div>
+                            <div class="wb-field">
+                                <label for="wb-name">Campaign name</label>
+                                <input class="wb-input" id="wb-name" placeholder="Weekend promotion" />
+                            </div>
+                            <div class="wb-field">
+                                <label>Product photos</label>
+                                <div class="wb-media-picker">
+                                    <div class="wb-media-items" id="wb-media-items"></div>
+                                    <button class="wb-add-media" id="wb-upload" type="button" title="Add product photos" aria-label="Add product photos">+</button>
+                                </div>
+                                <div class="wb-attachment-meta">
+                                    <span id="wb-file-name">No photos selected</span>
+                                    <span id="wb-media-limit">0 / 10</span>
+                                </div>
+                                <div class="wb-file-upload">
+                                    <button class="wb-btn wb-btn-secondary" id="wb-upload-file" type="button">Upload document or video</button>
+                                </div>
+                            </div>
+                            <div class="wb-send-row">
+                                <button class="wb-btn wb-btn-send" id="wb-send">Send to 0 customers</button>
+                                <button class="wb-btn wb-btn-secondary" id="wb-open-chat">Open chats</button>
+                            </div>
+                            <div class="wb-send-note">Queued as background jobs and sent gradually.</div>
+                            <div class="wb-stat" id="wb-stat"></div>
                         </div>
-
-                        <div class="wb-actions">
-                            <button class="wb-btn wb-btn-send" id="wb-send">Send Template To Group</button>
-                            <button class="wb-btn wb-btn-secondary" id="wb-open-chat">Open Whatsapp Chats</button>
+                        <div>
+                            <div class="wb-preview">
+                                <div class="wb-preview-label">message preview — sample customer</div>
+                                <div class="wb-preview-media" id="wb-preview-media"></div>
+                                <div class="wb-bubble" id="wb-preview-text">Select a template to preview.</div>
+                            </div>
+                            <p class="wb-preview-note">Template variables are personalized separately for each recipient.</p>
                         </div>
-                        <div class="wb-stat" id="wb-stat"></div>
                     </div>
-
-                    <div class="wb-card">
-                        <h3 style="margin-top:0;color:#1f4937;">Group Manager</h3>
-                        <div class="wb-field">
-                            <label for="wb-new-group">New Group Name</label>
-                            <input class="wb-input" id="wb-new-group" placeholder="Group 4 - East Region" />
-                        </div>
-                        <div class="wb-actions">
-                            <button class="wb-btn wb-btn-secondary" id="wb-create-group">Create Group</button>
-                            <button class="wb-btn wb-btn-danger" id="wb-delete-group">Delete Selected Group</button>
-                        </div>
-                        <div class="wb-field">
-                            <label>All Customers (add accordingly to selected group)</label>
-                            <div class="wb-recipients" id="wb-recipients"></div>
-                        </div>
-                        <div class="wb-actions">
-                            <button class="wb-btn wb-btn-secondary" id="wb-select-all">Select All With WhatsApp</button>
-                            <button class="wb-btn wb-btn-secondary" id="wb-save-members">Save Group Members</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="wb-stack">
-                    <div class="wb-card">
-                        <h3 style="margin-top:0;color:#1f4937;">Template Preview</h3>
-                        <div class="wb-preview">
-                            <div class="wb-bubble" id="wb-preview-text">Select a template to preview.</div>
-                        </div>
-                        <p class="wb-stat">Customer names are personalized separately for every recipient.</p>
-                    </div>
-
-                    <div class="wb-card">
-                        <h3 style="margin-top:0;color:#1f4937;">Broadcast Tracking</h3>
-                        <div class="wb-history" id="wb-history"></div>
-                    </div>
-                </div>
+                </main>
             </div>
+
+            <section class="wb-history-section">
+                <h2 class="wb-section-title">Send queue</h2>
+                <div class="wb-history-wrap">
+                    <table class="wb-history">
+                        <thead><tr><th>Campaign</th><th>Template</th><th>Recipients</th><th>Sent</th><th>Failed</th><th>Status</th><th>Created</th></tr></thead>
+                        <tbody id="wb-history"></tbody>
+                    </table>
+                </div>
+            </section>
         </div>
     `);
 
@@ -121,6 +206,8 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
     let groups = [];
     let history = [];
     let templates = [];
+    let imageAttachments = [];
+    let standaloneAttachment = null;
     let attachmentUrl = '';
     let attachmentName = '';
 
@@ -128,6 +215,40 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
         const $stat = $('#wb-stat');
         $stat.text(text || '');
         $stat.css('color', color || '#60786b');
+    }
+
+    function renderAttachments() {
+        const $items = $('#wb-media-items');
+        $items.html(imageAttachments.map((file, index) => `
+            <div class="wb-media-tile ${index === 0 ? 'is-first' : ''}" title="${frappe.utils.escape_html(file.file_name)}">
+                <img src="${frappe.utils.escape_html(file.file_url)}" alt="${frappe.utils.escape_html(file.file_name)}" />
+                <button class="wb-remove-media" type="button" data-index="${index}" title="Remove photo" aria-label="Remove photo">&times;</button>
+            </div>
+        `).join(''));
+
+        $('#wb-preview-media').html(imageAttachments.slice(0, 4).map(file =>
+            `<img src="${frappe.utils.escape_html(file.file_url)}" alt="${frappe.utils.escape_html(file.file_name)}" />`
+        ).join(''));
+        $('#wb-upload').toggle(imageAttachments.length < 10);
+        $('#wb-media-limit').text(`${imageAttachments.length} / 10`);
+
+        if (imageAttachments.length) {
+            standaloneAttachment = null;
+            attachmentUrl = imageAttachments[0].file_url;
+            attachmentName = imageAttachments[0].file_name;
+            const suffix = imageAttachments.length === 1 ? '1 photo selected' : `${imageAttachments.length} photos staged`;
+            $('#wb-file-name')
+                .text(suffix)
+                .toggleClass('wb-carousel-warning', imageAttachments.length > 1);
+        } else if (standaloneAttachment) {
+            attachmentUrl = standaloneAttachment.file_url;
+            attachmentName = standaloneAttachment.file_name;
+            $('#wb-file-name').text(attachmentName).removeClass('wb-carousel-warning');
+        } else {
+            attachmentUrl = '';
+            attachmentName = '';
+            $('#wb-file-name').text('No photos selected').removeClass('wb-carousel-warning');
+        }
     }
 
     function safeParse(key, fallback) {
@@ -147,7 +268,83 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
     }
 
     function normalizePhone(phone) {
-        return (phone || '').toString().replace(/\D/g, '');
+        let normalized = (phone || '').toString().replace(/\D/g, '');
+        if (normalized.startsWith('0')) normalized = normalized.slice(1);
+        if (normalized && !normalized.startsWith('256')) normalized = `256${normalized}`;
+        return normalized;
+    }
+
+    function hasUsableWhatsAppNumber(phone) {
+        return /^256\d{9}$/.test(normalizePhone(phone));
+    }
+
+    function normalizeFilterValue(value) {
+        return (value || '').toString().trim().toLowerCase();
+    }
+
+    function getFilteredCustomers() {
+        const region = normalizeFilterValue($('#wb-region').val());
+        const district = normalizeFilterValue($('#wb-district').val());
+        const location = normalizeFilterValue($('#wb-location').val());
+        const salesPerson = normalizeFilterValue($('#wb-sales-person').val());
+        const query = normalizeFilterValue($('#wb-customer-search').val());
+
+        return customers.filter(row => {
+            const rowSalesPeople = (row.sales_people || []).map(normalizeFilterValue);
+            const searchable = `${row.customer_name || ''} ${row.name || ''} ${row.whatsapp_number || ''}`.toLowerCase();
+            return (!region || normalizeFilterValue(row.region) === region)
+                && (!district || normalizeFilterValue(row.district) === district)
+                && (!location || normalizeFilterValue(row.location).includes(location))
+                && (!salesPerson || rowSalesPeople.includes(salesPerson))
+                && (!query || searchable.includes(query));
+        });
+    }
+
+    function hasActiveAudienceFilters() {
+        return ['#wb-region', '#wb-district', '#wb-location', '#wb-sales-person', '#wb-customer-search']
+            .some(selector => normalizeFilterValue($(selector).val()));
+    }
+
+    function setFilterOptions(selector, emptyLabel, values) {
+        const $select = $(selector);
+        const selected = $select.val();
+        const uniqueValues = [...new Set(values.filter(Boolean).map(value => value.toString().trim()))]
+            .sort((a, b) => a.localeCompare(b));
+        $select.html([
+            `<option value="">${emptyLabel}</option>`,
+            ...uniqueValues.map(value => `<option value="${frappe.utils.escape_html(value)}">${frappe.utils.escape_html(value)}</option>`)
+        ].join(''));
+        if (selected && uniqueValues.includes(selected)) $select.val(selected);
+    }
+
+    function populateFilterOptions() {
+        const selectedRegion = normalizeFilterValue($('#wb-region').val());
+        setFilterOptions('#wb-region', 'All regions', customers.map(row => row.region));
+        setFilterOptions(
+            '#wb-district',
+            'All districts',
+            customers
+                .filter(row => !selectedRegion || normalizeFilterValue(row.region) === selectedRegion)
+                .map(row => row.district)
+        );
+        setFilterOptions(
+            '#wb-sales-person',
+            'All sales persons',
+            customers.flatMap(row => row.sales_people || [])
+        );
+    }
+
+    function updateAudienceSummary() {
+        const selectedGroup = getSelectedGroup();
+        const memberNames = new Set((selectedGroup && selectedGroup.members) || []);
+        const recipientPhones = new Set(customers
+            .filter(row => memberNames.has(row.name) && hasUsableWhatsAppNumber(row.whatsapp_number))
+            .map(row => normalizePhone(row.whatsapp_number)));
+        const recipientCount = recipientPhones.size;
+        const checkedCount = $('.wb-customer:checked').length;
+        $('#wb-match-count').text(getFilteredCustomers().length);
+        $('#wb-selected-count').text(`${checkedCount} selected`);
+        $('#wb-send').text(`Send to ${recipientCount} customer${recipientCount === 1 ? '' : 's'}`);
     }
 
     function renderGroupOptions() {
@@ -159,6 +356,7 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
         const selected = $group.val();
         $group.html(groups.map(g => `<option value="${frappe.utils.escape_html(g.id)}">${frappe.utils.escape_html(g.name)} (${(g.members || []).length})</option>`).join(''));
         if (selected && groups.some(g => g.id === selected)) $group.val(selected); else $group.val(groups[0].id);
+        updateAudienceSummary();
     }
 
     function renderTemplateOptions() {
@@ -174,7 +372,7 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
     function renderHistory() {
         const $box = $('#wb-history');
         if (!history.length) {
-            $box.html('<div class="wb-stat">No broadcasts tracked yet.</div>');
+            $box.html('<tr><td class="wb-empty" colspan="7">No broadcasts tracked yet.</td></tr>');
             return;
         }
 
@@ -182,14 +380,19 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
             const campaign = frappe.utils.escape_html(item.broadcast_name || 'Broadcast');
             const templateName = frappe.utils.escape_html(item.name1 || '-');
             const status = frappe.utils.escape_html(item.send_status || 'Draft');
+            const statusClass = (item.send_status || 'draft').toLowerCase().replace(/[^a-z0-9]+/g, '-');
             const formLink = frappe.utils.get_form_link(
                 'BroadCast Message', item.name, true, campaign
             );
-            return `<div class="wb-history-item">
-                <div class="wb-history-name">${formLink}</div>
-                <div class="wb-history-meta">Template: ${templateName} | Status: ${status} | Recipients: ${item.recipient_count || 0} | ${frappe.datetime.str_to_user(item.creation)}</div>
-                <div class="wb-history-msg">Sent: ${item.sent_count || 0} | Failed: ${item.failed_count || 0} | Skipped: ${item.skipped_count || 0}</div>
-            </div>`;
+            return `<tr>
+                <td>${formLink}</td>
+                <td>${templateName}</td>
+                <td>${item.recipient_count || 0}</td>
+                <td>${item.sent_count || 0}</td>
+                <td>${item.failed_count || 0}</td>
+                <td><span class="wb-status wb-status-${statusClass}">${status}</span></td>
+                <td>${frappe.datetime.str_to_user(item.creation)}</td>
+            </tr>`;
         }).join(''));
     }
 
@@ -198,21 +401,34 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
         const members = new Set((selectedGroup && selectedGroup.members) || []);
         const $box = $('#wb-recipients');
 
-        if (!customers.length) {
+        const visibleCustomers = getFilteredCustomers()
+            .map(row => ({ row, index: customers.indexOf(row) }));
+
+        if (!visibleCustomers.length) {
             $box.html('<div class="wb-stat">No customers found.</div>');
+            updateAudienceSummary();
             return;
         }
 
-        const html = customers.map((row, idx) => {
+        const html = visibleCustomers.map(({ row, index }) => {
             const name = frappe.utils.escape_html(row.customer_name || row.name);
-            const contact = normalizePhone(row.whatsapp_number || '');
-            const checked = members.has(row.name) ? 'checked' : '';
-            const disabled = contact ? '' : 'disabled';
-            const waLine = contact ? `<small>${frappe.utils.escape_html(row.whatsapp_number)}</small>` : '<small class="no-wa">No WhatsApp number</small>';
-            return `<label class="wb-chip"><input type="checkbox" class="wb-customer" data-index="${idx}" ${checked} ${disabled} /> <span><strong>${name}</strong><br>${waLine}</span></label>`;
+            const contact = row.whatsapp_number || '';
+            const hasUsableNumber = hasUsableWhatsAppNumber(contact);
+            const checked = members.has(row.name) && hasUsableNumber ? 'checked' : '';
+            const disabled = hasUsableNumber ? '' : 'disabled';
+            const waLine = hasUsableNumber
+                ? `<small>${frappe.utils.escape_html(contact)}</small>`
+                : `<small class="no-wa">${contact ? 'Invalid WhatsApp number' : 'No WhatsApp number'}</small>`;
+            const customerMeta = [row.region, row.district, row.location, ...(row.sales_people || [])]
+                .filter(Boolean)
+                .map(value => frappe.utils.escape_html(value))
+                .join(' · ');
+            const metaLine = customerMeta ? `<small class="wb-customer-meta">${customerMeta}</small>` : '';
+            return `<label class="wb-chip"><input type="checkbox" class="wb-customer" data-index="${index}" ${checked} ${disabled} /> <span><strong>${name}</strong>${waLine}${metaLine}</span></label>`;
         }).join('');
 
         $box.html(html);
+        updateAudienceSummary();
     }
 
     function loadTemplates() {
@@ -237,8 +453,38 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
             method: 'whatsapp_integration.erpnext_whatsapp.doctype.broadcast_message.broadcast_message.get_eligible_customers',
             callback: function(r) {
                 customers = (r.message && r.message.customers) || [];
+                customers.forEach(row => { row.sales_people = []; });
+                populateFilterOptions();
                 renderCustomersForGroup();
-                setStat(`${customers.length} eligible customers loaded.`, '#60786b');
+                setStat(`${customers.length} enabled customers loaded.`, '#667781');
+
+                const customerNames = customers.map(row => row.name);
+                if (!customerNames.length) return;
+
+                frappe.call({
+                    method: 'frappe.client.get_list',
+                    args: {
+                        doctype: 'Sales Team',
+                        parent: 'Customer',
+                        fields: ['parent', 'sales_person'],
+                        filters: [
+                            ['parenttype', '=', 'Customer']
+                        ],
+                        limit_page_length: 0
+                    },
+                    callback: function(salesResponse) {
+                        const salesPeopleByCustomer = new Map();
+                        (salesResponse.message || []).forEach(row => {
+                            if (!row.parent || !row.sales_person) return;
+                            if (!salesPeopleByCustomer.has(row.parent)) salesPeopleByCustomer.set(row.parent, []);
+                            const values = salesPeopleByCustomer.get(row.parent);
+                            if (!values.includes(row.sales_person)) values.push(row.sales_person);
+                        });
+                        customers.forEach(row => { row.sales_people = salesPeopleByCustomer.get(row.name) || []; });
+                        populateFilterOptions();
+                        renderCustomersForGroup();
+                    }
+                });
             }
         });
     }
@@ -289,23 +535,79 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
         renderCustomersForGroup();
     });
 
+    $('#wb-customer-search').on('input', function() {
+        renderCustomersForGroup();
+    });
+
+    $('#wb-region').on('change', function() {
+        populateFilterOptions();
+        renderCustomersForGroup();
+    });
+
+    $('#wb-district, #wb-sales-person').on('change', function() {
+        renderCustomersForGroup();
+    });
+
+    $('#wb-location').on('input', function() {
+        renderCustomersForGroup();
+    });
+
+    $('#wb-recipients').on('change', '.wb-customer', function() {
+        $('#wb-selected-count').text(`${$('.wb-customer:checked').length} selected`);
+    });
+
     $('#wb-template').on('change', function() {
         updateTemplatePreview();
     });
 
     $('#wb-upload').on('click', function() {
         new frappe.ui.FileUploader({
+            allow_multiple: true,
+            allow_web_link: false,
+            folder: 'Home/Attachments',
+            restrictions: {
+                allowed_file_types: ['image/*'],
+                max_number_of_files: 10 - imageAttachments.length
+            },
+            on_success(fileDoc) {
+                if (imageAttachments.length >= 10) {
+                    setStat('A carousel can contain a maximum of 10 photos.', '#b63b3b');
+                    return;
+                }
+                if (!imageAttachments.some(file => file.file_url === fileDoc.file_url)) {
+                    imageAttachments.push({ file_url: fileDoc.file_url, file_name: fileDoc.file_name });
+                }
+                renderAttachments();
+                setStat(
+                    imageAttachments.length > 1
+                        ? `${imageAttachments.length} photos staged. An approved carousel template is required to send them together.`
+                        : `Photo '${fileDoc.file_name}' uploaded.`,
+                    imageAttachments.length > 1 ? '#9a7100' : '#166b48'
+                );
+            }
+        });
+    });
+
+    $('#wb-media-items').on('click', '.wb-remove-media', function() {
+        const index = parseInt($(this).attr('data-index'), 10);
+        if (!Number.isNaN(index)) imageAttachments.splice(index, 1);
+        renderAttachments();
+        setStat(imageAttachments.length ? `${imageAttachments.length} photo(s) staged.` : 'Photo selection cleared.', '#667781');
+    });
+
+    $('#wb-upload-file').on('click', function() {
+        new frappe.ui.FileUploader({
             allow_multiple: false,
             allow_web_link: false,
             folder: 'Home/Attachments',
             restrictions: {
-                allowed_file_types: ['image/*', 'video/*', '.pdf', '.xlsx', '.xls', '.csv']
+                allowed_file_types: ['video/*', '.pdf', '.xlsx', '.xls', '.csv']
             },
             on_success(fileDoc) {
-                attachmentUrl = fileDoc.file_url;
-                attachmentName = fileDoc.file_name;
-                $('#wb-file-name').text(attachmentName);
-                setStat(`Attachment '${attachmentName}' uploaded.`, '#166b48');
+                imageAttachments = [];
+                standaloneAttachment = { file_url: fileDoc.file_url, file_name: fileDoc.file_name };
+                renderAttachments();
+                setStat(`Attachment '${fileDoc.file_name}' uploaded.`, '#166b48');
             }
         });
     });
@@ -314,6 +616,7 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
         $('.wb-customer').each(function() {
             if (!$(this).is(':disabled')) $(this).prop('checked', true);
         });
+        $('#wb-selected-count').text(`${$('.wb-customer:checked').length} selected`);
     });
 
     $('#wb-save-members').on('click', function() {
@@ -329,10 +632,21 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
             if (!Number.isNaN(idx) && customers[idx]) selectedCustomerNames.push(customers[idx].name);
         });
 
-        selectedGroup.members = selectedCustomerNames;
+        if (hasActiveAudienceFilters()) {
+            const visibleNames = new Set($('.wb-customer').map(function() {
+                const idx = parseInt($(this).attr('data-index'), 10);
+                return !Number.isNaN(idx) && customers[idx] ? customers[idx].name : null;
+            }).get().filter(Boolean));
+            selectedGroup.members = (selectedGroup.members || [])
+                .filter(name => !visibleNames.has(name))
+                .concat(selectedCustomerNames);
+        } else {
+            selectedGroup.members = selectedCustomerNames;
+        }
         saveGroups();
         renderGroupOptions();
-        setStat(`Saved ${selectedCustomerNames.length} customers in ${selectedGroup.name}.`, '#166b48');
+        renderCustomersForGroup();
+        setStat(`Saved ${selectedGroup.members.length} customers in ${selectedGroup.name}.`, '#166b48');
     });
 
     $('#wb-create-group').on('click', function() {
@@ -382,6 +696,16 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
             return;
         }
 
+        if (imageAttachments.length > 1) {
+            setStat('Multiple photos are staged, but sending them requires an approved carousel template. Keep one photo for this standard template.', '#b63b3b');
+            return;
+        }
+
+        if (imageAttachments.length === 1 && (selectedTemplate.format || '').toLowerCase() !== 'image') {
+            setStat('Select an approved image template before sending a product photo.', '#b63b3b');
+            return;
+        }
+
         const needsAttachment = ['documentation', 'image', 'video'].includes(
             (selectedTemplate.format || '').toLowerCase()
         );
@@ -399,7 +723,7 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
                 customer_name: c.customer_name || c.name,
                 customer: c.name
             }))
-            .filter(r => r.contact);
+            .filter(r => /^256\d{9}$/.test(r.contact));
 
         if (!selectedRecipients.length) {
             setStat(`Group '${selectedGroup.name}' has no customers with WhatsApp numbers.`, '#b63b3b');
@@ -454,4 +778,5 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
     loadHistory();
     renderCustomersForGroup();
     updateTemplatePreview();
+    renderAttachments();
 };

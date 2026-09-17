@@ -3,6 +3,7 @@ import json
 import mimetypes
 import os
 import re
+from contextlib import suppress
 from urllib.parse import unquote, urlparse
 
 import frappe
@@ -42,6 +43,8 @@ NOTIFIABLE_WORKFLOW_STATES = {
     "Pending Credit Approval",
     "Approved",
 }
+SEND_JOB_TIMEOUT = 600
+SEND_LOCK_TIMEOUT = SEND_JOB_TIMEOUT + 60
 
 
 def _normalize_email(value):
@@ -68,9 +71,17 @@ def _normalize_phone(value):
 
 def _get_recipient_numbers():
     site_override = (frappe.conf.get("whatsapp_test_recipient") or "").strip()
-    return {
+    configured_numbers = {
         site_override if phone == OVERRIDABLE_RECIPIENT_NUMBER and site_override else phone
         for phone in RECIPIENT_NUMBERS
+    }
+
+    # Deduplicate after normalization so local and international versions of the
+    # same number cannot receive the same notification twice.
+    return {
+        normalized
+        for phone in configured_numbers
+        if (normalized := _normalize_phone(phone))
     }
 
 
@@ -345,12 +356,17 @@ def _send_template(phone, pdf_doc, parameters):
     return {"success": False, "error": error_msg}
 
 
-def _already_sent(sales_order):
+def _recipient_already_sent(sales_order, phone):
     safe_name = _safe_filename(sales_order.name)
+    phone = _normalize_phone(phone)
+    if not phone:
+        return False
+
     return bool(
         frappe.db.exists(
             "Whatsapp Message",
             {
+                "from_number": phone,
                 "message_type": "template",
                 "custom_status": "Outgoing",
                 "message_status": ["in", ["sent", "delivered", "read"]],
@@ -360,12 +376,41 @@ def _already_sent(sales_order):
     )
 
 
+def _get_pending_recipient_numbers(sales_order):
+    return {
+        phone
+        for phone in _get_recipient_numbers()
+        if not _recipient_already_sent(sales_order, phone)
+    }
+
+
+def _all_recipients_sent(sales_order):
+    recipient_numbers = _get_recipient_numbers()
+    return bool(recipient_numbers) and not any(
+        not _recipient_already_sent(sales_order, phone)
+        for phone in recipient_numbers
+    )
+
+
 def send_central_sales_order_async(doc_name):
+    lock = frappe.cache.lock(
+        f"central-sales-order-whatsapp:{doc_name}",
+        timeout=SEND_LOCK_TIMEOUT,
+        blocking=False,
+    )
+    if not lock.acquire(blocking=False):
+        frappe.logger().info(
+            f"Central Sales Order WhatsApp send already in progress for {doc_name}"
+        )
+        return
+
     try:
         sales_order = frappe.get_doc("Sales Order", doc_name)
         if not _is_central_sales_order(sales_order):
             return
-        if _already_sent(sales_order):
+
+        recipient_numbers = _get_pending_recipient_numbers(sales_order)
+        if not recipient_numbers:
             return
 
         customer = frappe.get_doc("Customer", sales_order.customer)
@@ -374,8 +419,12 @@ def send_central_sales_order_async(doc_name):
 
         failures = []
         success_count = 0
-        recipient_numbers = _get_recipient_numbers()
-        for phone in recipient_numbers:
+        for phone in sorted(recipient_numbers):
+            # Recheck immediately before sending in case a previous interrupted
+            # run recorded this recipient after the pending list was built.
+            if _recipient_already_sent(sales_order, phone):
+                continue
+
             result = _send_template(phone, pdf_doc, parameters)
             if result.get("success"):
                 success_count += 1
@@ -395,6 +444,11 @@ def send_central_sales_order_async(doc_name):
 
     except Exception:
         frappe.log_error(frappe.get_traceback(), "Central Sales Order WhatsApp")
+    finally:
+        # Redis locks have a TTL. If a long-running job outlives it, another
+        # worker may own the key and releasing it would raise an exception.
+        with suppress(Exception):
+            lock.release()
 
 
 def _should_notify(doc):
@@ -402,7 +456,7 @@ def _should_notify(doc):
         return False
     if not _is_central_sales_order(doc):
         return False
-    if _already_sent(doc):
+    if _all_recipients_sent(doc):
         return False
 
     current_state = (getattr(doc, "workflow_state", None) or "").strip()
@@ -414,9 +468,11 @@ def _enqueue_central_sales_order(doc):
         send_central_sales_order_async,
         doc_name=doc.name,
         queue="short",
-        timeout=300,
+        timeout=SEND_JOB_TIMEOUT,
         is_async=True,
         now=False,
+        job_id=f"central-sales-order-whatsapp-{doc.name}",
+        deduplicate=True,
         enqueue_after_commit=True,
     )
 
