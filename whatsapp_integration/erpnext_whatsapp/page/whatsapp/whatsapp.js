@@ -38,7 +38,7 @@ frappe.pages["whatsapp"].on_page_load = function (wrapper) {
         refresh_conversations_timeout: null
     };
 
-    // wa_utils.js, wa_sidebar.js, wa_messages.js, wa_input.js, wa_realtime.js
+    // wa_utils.js, wa_documents.js, wa_templates.js, wa_sidebar.js, wa_messages.js, wa_input.js, wa_realtime.js
     // must be loaded first, via app_include_js in hooks.py or frappe.require
     page.main.html(`
         <div class="wa-container">
@@ -81,7 +81,7 @@ frappe.pages["whatsapp"].on_page_load = function (wrapper) {
                 </div>
                 <div class="wa-input-area">
                     <button class="wa-attachment-btn" id="wa-attachment-btn" type="button" title="Attach file" aria-label="Attach file">&#43;</button>
-                    <input type="file" id="wa-file-input" style="display: none;" accept="image/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt" />
+                    <input type="file" id="wa-file-input" style="display: none;" accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt" />
                     <div class="wa-input-wrapper">
                         <button class="wa-emoji-btn" id="wa-emoji-btn" type="button" title="Emoji" aria-label="Emoji">&#9786;</button>
                         <textarea
@@ -168,6 +168,7 @@ frappe.pages["whatsapp"].on_page_load = function (wrapper) {
         wa.reply.bind_events();
         wa.actions.bind_events();
         wa.reactions.bind_events();
+        wa.templates.bind_events();
         wa.carousel.bind_events();
         wa.contact_panel.build();
         wa.contact_panel.bind_events();

@@ -9,6 +9,30 @@ def _ensure_chat_access():
     frappe.only_for(CHAT_ROLES)
 
 
+def _attach_file_sizes(messages):
+    """Attach File.file_size to document rows without adding another custom field."""
+    file_urls = list({
+        file_url
+        for row in messages
+        for file_url in (row.get("custom_document"), row.get("custom_template_header_file"))
+        if file_url
+    })
+    if not file_urls:
+        return messages
+
+    files = frappe.get_all(
+        "File",
+        filters={"file_url": ["in", file_urls]},
+        fields=["file_url", "file_size"],
+        limit_page_length=0,
+    )
+    size_by_url = {row.file_url: row.file_size for row in files}
+    for message in messages:
+        message.file_size = size_by_url.get(message.custom_document)
+        message.template_header_file_size = size_by_url.get(message.custom_template_header_file)
+    return messages
+
+
 @frappe.whitelist()
 def get_conversations():
     """Return message rows used to build the conversation sidebar."""
@@ -44,7 +68,7 @@ def get_chat_history(contact):
     if not contact:
         return []
 
-    return frappe.get_all(
+    messages = frappe.get_all(
         "Whatsapp Message",
         fields=[
             "name",
@@ -67,11 +91,15 @@ def get_chat_history(contact):
             "custom_reply_to_text",
             "custom_template_type",
             "custom_template_data",
+            "custom_template_header_type",
+            "custom_template_header_file",
+            "custom_template_footer",
         ],
         filters={"from_number": contact},
         order_by="creation asc",
         limit_page_length=0,
     )
+    return _attach_file_sizes(messages)
 
 
 @frappe.whitelist()

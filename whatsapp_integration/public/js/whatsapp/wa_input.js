@@ -76,27 +76,24 @@ wa.input.show_file_preview = function (file, fileUrl, isTemp) {
         previewHtml = `<div class="wa-media-container"><video controls onloadeddata="scrollToBottomDelayed()" ${
             isTemp ? "" : "onclick=\"open_lightbox('" + safeFileUrl + "', 'video')\""
         }><source src="${safeFileUrl}"></video></div>`;
-    } else if (fileType === "application/pdf") {
-        const downloadLink = isTemp ? "javascript:void(0)" : `${safeFileUrl}`;
-        const downloadAttr = isTemp ? "" : `download="${safeFilename}"`;
-        const targetAttr = isTemp ? "" : 'target="_blank"';
-        previewHtml = `<div class="wa-document-preview"><div class="wa-doc-icon">PDF</div><div class="wa-doc-info"><div class="wa-doc-name">${safeFilename}</div><div class="wa-doc-meta">${wa.utils.formatFileSize(
-            file.size
-        )} • PDF • <a href="${downloadLink}" ${targetAttr} ${downloadAttr} class="wa-download-link">Click to download</a></div></div></div>`;
+    } else if (fileType.startsWith("audio/")) {
+        previewHtml =
+            wa.audio && typeof wa.audio.render === "function"
+                ? wa.audio.render(fileUrl)
+                : `<audio controls preload="metadata" src="${safeFileUrl}"></audio>`;
     } else {
-        const file_ext = file.name.split(".").pop().toUpperCase();
-        const downloadLink = isTemp ? "javascript:void(0)" : `${safeFileUrl}`;
-        const downloadAttr = isTemp ? "" : `download="${safeFilename}"`;
-        const targetAttr = isTemp ? "" : 'target="_blank"';
-        previewHtml = `<div class="wa-document-preview"><div class="wa-doc-icon">${file_ext}</div><div class="wa-doc-info"><div class="wa-doc-name">${safeFilename}</div><div class="wa-doc-meta">${wa.utils.formatFileSize(
-            file.size
-        )} • <a href="${downloadLink}" ${targetAttr} ${downloadAttr} class="wa-download-link">Click to download</a></div></div></div>`;
+        const documentUrl = fileUrl;
+        previewHtml =
+            wa.documents && typeof wa.documents.render === "function"
+                ? wa.documents.render(documentUrl, file.name, file.size)
+                : wa.utils.render_message_text(file.name || "Document");
     }
 
     const html = `<div class="wa-message outgoing sending-msg${tempClass}" data-temp-id="${tempId}" data-message-type="${safeFileType}" data-file-url="${safeFilename}" data-creation="${createdAt}"><div class="wa-message-content">${previewHtml}<div class="wa-message-footer"><span>${wa.utils.format_timestamp(
         time
     )}</span>${wa.utils.get_pending_tick()}</div></div></div>`;
     $("#wa-messages-area").append(html);
+    wa.messages.hydrate_components();
     window.scrollToBottomDelayed();
     return tempId;
 };

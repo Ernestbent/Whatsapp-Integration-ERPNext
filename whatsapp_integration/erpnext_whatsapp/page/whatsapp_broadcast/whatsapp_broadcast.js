@@ -59,17 +59,41 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
             .wb-media-tile, .wb-add-media { position: relative; width: 58px; height: 58px; flex: 0 0 58px; overflow: hidden; border: 1px solid #c8d0d3; border-radius: 9px; background: #fff; }
             .wb-media-tile.is-first { border: 2px solid var(--wb-green); }
             .wb-media-tile img { width: 100%; height: 100%; object-fit: cover; }
+            .wb-media-tile.wb-item-tile { width: 172px; height: 64px; flex-basis: 172px; display: grid; grid-template-columns: 62px minmax(0, 1fr); overflow: hidden; }
+            .wb-media-tile.wb-item-tile img { width: 62px; height: 62px; border-right: 1px solid var(--wb-line); }
+            .wb-item-tile-copy { min-width: 0; padding: 9px 22px 7px 8px; }
+            .wb-item-tile-copy strong, .wb-item-tile-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .wb-item-tile-copy strong { font-size: 11px; font-weight: 650; }
+            .wb-item-tile-copy small { margin-top: 5px; color: var(--wb-green-dark); font-size: 10px; }
             .wb-remove-media { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: rgba(8, 13, 13, .8); color: #fff; font-size: 13px; line-height: 18px; cursor: pointer; }
             .wb-add-media { display: grid; place-items: center; color: var(--wb-teal); font-size: 28px; font-weight: 300; cursor: pointer; }
             .wb-add-media:hover { border-color: var(--wb-green-dark); background: #eef7f3; }
             .wb-attachment-meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; color: var(--wb-muted); font-size: 10px; }
             .wb-attachment-meta .wb-carousel-warning { color: #9a7100; }
             .wb-file-upload { margin-top: 8px; }
+            .wb-carousel-tools { display: none; margin-bottom: 15px; padding: 12px; border: 1px solid #b9ddd2; border-radius: 8px; background: #f1faf7; }
+            .wb-carousel-tools.is-visible { display: block; }
+            .wb-carousel-tools .wb-inline { align-items: center; }
+            .wb-carousel-tools .wb-select { flex: 1; }
+            .wb-carousel-help { margin: 7px 0 0; color: var(--wb-muted); font-size: 10px; }
             .wb-preview { min-height: 224px; padding: 18px 14px; border: 1px solid var(--wb-line); border-radius: 14px; background: #e5ddd5; }
             .wb-preview-media { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; width: 90%; margin: 0 0 5px auto; }
             .wb-preview-media:empty { display: none; }
             .wb-preview-media img { width: 100%; height: 92px; object-fit: cover; border-radius: 6px; }
             .wb-preview-media img:only-child { grid-column: 1 / -1; height: 150px; }
+            .wb-preview-media.is-carousel { display: flex; width: 100%; margin-left: 0; overflow-x: auto; gap: 7px; }
+            .wb-preview-card { width: 142px; flex: 0 0 142px; overflow: hidden; border-radius: 7px; background: #fff; }
+            .wb-preview-card img { width: 100%; height: 92px; border-radius: 0; object-fit: cover; }
+            .wb-preview-card-copy { padding: 7px; }
+            .wb-preview-card-copy strong, .wb-preview-card-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .wb-preview-card-copy strong { font-size: 10px; }
+            .wb-preview-card-copy small { margin-top: 4px; color: var(--wb-muted); font-size: 9px; }
+            .wb-preview-card-action { padding: 6px; border-top: 1px solid var(--wb-line); color: var(--wb-green-dark); font-size: 9px; font-weight: 650; text-align: center; }
+            .wb-preview.is-carousel-preview { display: flex; flex-direction: column; }
+            .wb-preview.is-carousel-preview .wb-preview-label { order: 0; }
+            .wb-preview.is-carousel-preview .wb-bubble { order: 1; width: 100%; max-width: 100%; margin: 0; padding-bottom: 10px; border-radius: 8px 8px 0 0; }
+            .wb-preview.is-carousel-preview .wb-bubble::after { display: none; }
+            .wb-preview.is-carousel-preview .wb-preview-media { order: 2; padding: 0 8px 14px; border-radius: 0 0 8px 8px; background: var(--wb-bubble); }
             .wb-preview-label { margin-bottom: 13px; color: var(--wb-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; text-align: center; }
             .wb-bubble { position: relative; max-width: 90%; margin-left: auto; padding: 10px 12px 20px; border-radius: 8px 8px 2px 8px; background: var(--wb-bubble); color: var(--wb-text); font-size: 13px; line-height: 1.45; white-space: normal; }
             .wb-bubble::after { content: "now  ✓✓"; position: absolute; right: 9px; bottom: 5px; color: #5c8a3f; font-size: 9px; }
@@ -155,8 +179,16 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
                                 <label for="wb-name">Campaign name</label>
                                 <input class="wb-input" id="wb-name" placeholder="Weekend promotion" />
                             </div>
+                            <div class="wb-carousel-tools" id="wb-carousel-tools">
+                                <label for="wb-price-list">Carousel products and prices</label>
+                                <div class="wb-inline">
+                                    <select class="wb-select" id="wb-price-list"><option value="">Loading price lists...</option></select>
+                                    <button class="wb-btn wb-btn-secondary" id="wb-fetch-items" type="button">Fetch Items &amp; Prices</button>
+                                </div>
+                                <p class="wb-carousel-help">Select exactly 10 Items because this approved template has 10 cards. Each card uses Item.image and the active selling rate from the chosen Item Price list.</p>
+                            </div>
                             <div class="wb-field">
-                                <label>Product photos</label>
+                                <label id="wb-media-label">Product photos</label>
                                 <div class="wb-media-picker">
                                     <div class="wb-media-items" id="wb-media-items"></div>
                                     <button class="wb-add-media" id="wb-upload" type="button" title="Add product photos" aria-label="Add product photos">+</button>
@@ -165,7 +197,7 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
                                     <span id="wb-file-name">No photos selected</span>
                                     <span id="wb-media-limit">0 / 10</span>
                                 </div>
-                                <div class="wb-file-upload">
+                                <div class="wb-file-upload" id="wb-file-upload">
                                     <button class="wb-btn wb-btn-secondary" id="wb-upload-file" type="button">Upload document or video</button>
                                 </div>
                             </div>
@@ -207,6 +239,8 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
     let history = [];
     let templates = [];
     let imageAttachments = [];
+    let carouselItems = [];
+    let defaultSellingPriceList = '';
     let standaloneAttachment = null;
     let attachmentUrl = '';
     let attachmentName = '';
@@ -217,8 +251,51 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
         $stat.css('color', color || '#60786b');
     }
 
+    function isCarouselTemplate() {
+        const template = getSelectedTemplate();
+        return Boolean(template && (template.template_name || '').toLowerCase() === 'product_carousel');
+    }
+
     function renderAttachments() {
         const $items = $('#wb-media-items');
+        const carouselMode = isCarouselTemplate();
+
+        if (carouselMode) {
+            $items.html(carouselItems.map((item, index) => `
+                <div class="wb-media-tile wb-item-tile ${index === 0 ? 'is-first' : ''}" title="${frappe.utils.escape_html(item.item_code)}">
+                    <img src="${frappe.utils.escape_html(item.image)}" alt="${frappe.utils.escape_html(item.item_name)}" />
+                    <div class="wb-item-tile-copy">
+                        <strong>${frappe.utils.escape_html(item.item_name)}</strong>
+                        <small>${frappe.utils.escape_html(`${item.currency || ''} ${item.price_text || ''}`.trim())}</small>
+                    </div>
+                    <button class="wb-remove-media" type="button" data-index="${index}" title="Remove product" aria-label="Remove product">&times;</button>
+                </div>
+            `).join(''));
+
+            $('#wb-preview-media')
+                .addClass('is-carousel')
+                .html(carouselItems.map(item => `
+                    <div class="wb-preview-card">
+                        <img src="${frappe.utils.escape_html(item.image)}" alt="${frappe.utils.escape_html(item.item_name)}" />
+                        <div class="wb-preview-card-copy">
+                            <strong>${frappe.utils.escape_html(item.item_name)}</strong>
+                            <small>${frappe.utils.escape_html(`${item.currency || ''} ${item.price_text || ''}`.trim())}</small>
+                        </div>
+                        <div class="wb-preview-card-action">View Product</div>
+                    </div>
+                `).join(''));
+            $('#wb-upload').hide();
+            $('#wb-file-upload').hide();
+            $('#wb-media-label').text('Carousel cards');
+            $('#wb-media-limit').text(`${carouselItems.length} / 10`);
+            $('#wb-file-name')
+                .text(carouselItems.length ? `${carouselItems.length} products ready` : 'No products selected')
+                .toggleClass('wb-carousel-warning', carouselItems.length === 1);
+            attachmentUrl = '';
+            attachmentName = '';
+            return;
+        }
+
         $items.html(imageAttachments.map((file, index) => `
             <div class="wb-media-tile ${index === 0 ? 'is-first' : ''}" title="${frappe.utils.escape_html(file.file_name)}">
                 <img src="${frappe.utils.escape_html(file.file_url)}" alt="${frappe.utils.escape_html(file.file_name)}" />
@@ -226,10 +303,14 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
             </div>
         `).join(''));
 
-        $('#wb-preview-media').html(imageAttachments.slice(0, 4).map(file =>
-            `<img src="${frappe.utils.escape_html(file.file_url)}" alt="${frappe.utils.escape_html(file.file_name)}" />`
-        ).join(''));
+        $('#wb-preview-media')
+            .removeClass('is-carousel')
+            .html(imageAttachments.slice(0, 4).map(file =>
+                `<img src="${frappe.utils.escape_html(file.file_url)}" alt="${frappe.utils.escape_html(file.file_name)}" />`
+            ).join(''));
         $('#wb-upload').toggle(imageAttachments.length < 10);
+        $('#wb-file-upload').show();
+        $('#wb-media-label').text('Product photos');
         $('#wb-media-limit').text(`${imageAttachments.length} / 10`);
 
         if (imageAttachments.length) {
@@ -448,6 +529,60 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
         });
     }
 
+    function loadCarouselSettings() {
+        frappe.call({
+            method: 'whatsapp_integration.erpnext_whatsapp.doctype.broadcast_message.broadcast_message.get_carousel_settings',
+            callback: function(r) {
+                const settings = r.message || {};
+                defaultSellingPriceList = settings.default_price_list || 'Standard Selling';
+                const priceLists = settings.price_lists || [];
+                const options = priceLists.map(row =>
+                    `<option value="${frappe.utils.escape_html(row.name)}">${frappe.utils.escape_html(row.name)}${row.currency ? ` (${frappe.utils.escape_html(row.currency)})` : ''}</option>`
+                );
+                if (!priceLists.some(row => row.name === defaultSellingPriceList)) {
+                    options.unshift(`<option value="${frappe.utils.escape_html(defaultSellingPriceList)}">${frappe.utils.escape_html(defaultSellingPriceList)}</option>`);
+                }
+                $('#wb-price-list').html(options.join('')).val(defaultSellingPriceList);
+            }
+        });
+    }
+
+    function fetchCarouselItems(itemCodes, onComplete) {
+        const uniqueCodes = [...new Set(itemCodes || [])];
+        if (uniqueCodes.length > 10) {
+            setStat('A carousel can contain a maximum of 10 products.', '#b63b3b');
+            return;
+        }
+
+        frappe.call({
+            method: 'whatsapp_integration.erpnext_whatsapp.doctype.broadcast_message.broadcast_message.get_carousel_items',
+            args: {
+                item_codes: uniqueCodes,
+                price_list: $('#wb-price-list').val() || defaultSellingPriceList
+            },
+            freeze: true,
+            freeze_message: __('Loading Item images and selling prices...'),
+            callback: function(r) {
+                const result = r.message || {};
+                carouselItems = result.items || [];
+                if (result.price_list) $('#wb-price-list').val(result.price_list);
+                renderAttachments();
+
+                const skipped = result.skipped || [];
+                if (skipped.length) {
+                    const details = skipped.map(row => `${row.item_code}: ${row.reason}`).join('; ');
+                    setStat(`Skipped products that are not ready: ${details}`, '#9a7100');
+                } else {
+                    setStat(
+                        `${carouselItems.length} product${carouselItems.length === 1 ? '' : 's'} loaded with images and ${result.price_list || 'selling'} prices.`,
+                        '#166b48'
+                    );
+                }
+                if (onComplete) onComplete();
+            }
+        });
+    }
+
     function loadCustomers() {
         frappe.call({
             method: 'whatsapp_integration.erpnext_whatsapp.doctype.broadcast_message.broadcast_message.get_eligible_customers',
@@ -525,10 +660,14 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
 
     function updateTemplatePreview() {
         const tpl = getSelectedTemplate();
+        const carouselMode = isCarouselTemplate();
         const preview = (tpl && tpl.body_text)
             ? tpl.body_text.replace(/\{\{customer_name\}\}/g, 'Customer Name')
             : 'Select a template to preview.';
         $('#wb-preview-text').html(frappe.utils.escape_html(preview).replace(/\n/g, '<br>'));
+        $('#wb-carousel-tools').toggleClass('is-visible', carouselMode);
+        $('.wb-preview').toggleClass('is-carousel-preview', carouselMode);
+        renderAttachments();
     }
 
     $('#wb-group').on('change', function() {
@@ -558,6 +697,44 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
 
     $('#wb-template').on('change', function() {
         updateTemplatePreview();
+    });
+
+    $('#wb-fetch-items').on('click', function() {
+        if (!isCarouselTemplate()) {
+            setStat('Select the approved product_carousel template first.', '#b63b3b');
+            return;
+        }
+
+        const picker = new frappe.ui.form.MultiSelectDialog({
+            doctype: 'Item',
+            target: page,
+            setters: {
+                item_group: null,
+                brand: null
+            },
+            add_filters_group: true,
+            get_query() {
+                return { filters: { disabled: 0, image: ['is', 'set'] } };
+            },
+            primary_action_label: __('Load Items & Prices'),
+            action(selections) {
+                const selectedCodes = [...new Set([
+                    ...carouselItems.map(item => item.item_code),
+                    ...(selections || [])
+                ])];
+                if (!selectedCodes.length) {
+                    setStat('Select at least one Item.', '#b63b3b');
+                    return;
+                }
+                fetchCarouselItems(selectedCodes, () => picker.dialog.hide());
+            }
+        });
+    });
+
+    $('#wb-price-list').on('change', function() {
+        if (carouselItems.length) {
+            fetchCarouselItems(carouselItems.map(item => item.item_code));
+        }
     });
 
     $('#wb-upload').on('click', function() {
@@ -590,9 +767,16 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
 
     $('#wb-media-items').on('click', '.wb-remove-media', function() {
         const index = parseInt($(this).attr('data-index'), 10);
-        if (!Number.isNaN(index)) imageAttachments.splice(index, 1);
+        if (!Number.isNaN(index)) {
+            if (isCarouselTemplate()) carouselItems.splice(index, 1);
+            else imageAttachments.splice(index, 1);
+        }
         renderAttachments();
-        setStat(imageAttachments.length ? `${imageAttachments.length} photo(s) staged.` : 'Photo selection cleared.', '#667781');
+        if (isCarouselTemplate()) {
+            setStat(carouselItems.length ? `${carouselItems.length} product(s) ready.` : 'Carousel selection cleared.', '#667781');
+        } else {
+            setStat(imageAttachments.length ? `${imageAttachments.length} photo(s) staged.` : 'Photo selection cleared.', '#667781');
+        }
     });
 
     $('#wb-upload-file').on('click', function() {
@@ -686,6 +870,7 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
     $('#wb-send').on('click', function() {
         const selectedGroup = getSelectedGroup();
         const selectedTemplate = getSelectedTemplate();
+        const carouselMode = isCarouselTemplate();
 
         if (!selectedGroup) {
             setStat('Select a group first.', '#b63b3b');
@@ -696,12 +881,17 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
             return;
         }
 
-        if (imageAttachments.length > 1) {
+        if (carouselMode && carouselItems.length !== 10) {
+            setStat('The approved product_carousel template requires exactly 10 Items.', '#b63b3b');
+            return;
+        }
+
+        if (!carouselMode && imageAttachments.length > 1) {
             setStat('Multiple photos are staged, but sending them requires an approved carousel template. Keep one photo for this standard template.', '#b63b3b');
             return;
         }
 
-        if (imageAttachments.length === 1 && (selectedTemplate.format || '').toLowerCase() !== 'image') {
+        if (!carouselMode && imageAttachments.length === 1 && (selectedTemplate.format || '').toLowerCase() !== 'image') {
             setStat('Select an approved image template before sending a product photo.', '#b63b3b');
             return;
         }
@@ -709,7 +899,7 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
         const needsAttachment = ['documentation', 'image', 'video'].includes(
             (selectedTemplate.format || '').toLowerCase()
         );
-        if (needsAttachment && !attachmentUrl) {
+        if (!carouselMode && needsAttachment && !attachmentUrl) {
             setStat('Upload the template attachment before sending.', '#b63b3b');
             return;
         }
@@ -735,7 +925,11 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
         frappe.confirm(
             __(
                 'Send template {0} with attachment {1} to {2} customer(s)? WhatsApp messages cannot be recalled.',
-                [selectedTemplate.template_name, attachmentName || '-', selectedRecipients.length]
+                [
+                    selectedTemplate.template_name,
+                    carouselMode ? `${carouselItems.length} product cards` : (attachmentName || '-'),
+                    selectedRecipients.length
+                ]
             ),
             function() {
                 setStat('Creating and queueing the broadcast...', '#60786b');
@@ -745,7 +939,9 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
                         campaign_name: campaignName,
                         template_name: selectedTemplate.template_name,
                         customer_names: selectedRecipients.map(recipient => recipient.customer),
-                        document_url: attachmentUrl
+                        document_url: carouselMode ? null : attachmentUrl,
+                        carousel_item_codes: carouselMode ? carouselItems.map(item => item.item_code) : [],
+                        price_list: carouselMode ? ($('#wb-price-list').val() || defaultSellingPriceList) : null
                     },
                     freeze: true,
                     freeze_message: __('Queueing real WhatsApp broadcast...'),
@@ -774,6 +970,7 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
 
     bootstrapGroups();
     loadTemplates();
+    loadCarouselSettings();
     loadCustomers();
     loadHistory();
     renderCustomersForGroup();

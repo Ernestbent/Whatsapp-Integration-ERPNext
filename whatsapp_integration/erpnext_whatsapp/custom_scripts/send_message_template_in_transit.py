@@ -248,6 +248,13 @@ def send_whatsapp_template_message(phone, template_name, parameters=None, custom
                 "message_id": message_id,
                 "customer": customer,
                 "timestamp": frappe.utils.now_datetime().strftime("%H:%M:%S"),
+                "custom_template_header_type": "Document" if document_url else {
+                    "image": "Image",
+                    "video": "Video",
+                    "documentation": "Document",
+                }.get(header_type, "None"),
+                "custom_template_header_file": document_url or "",
+                "custom_template_footer": template.footer_text or "",
             }
 
             ## SAVE ATTACHED DOCUMENT

@@ -6,3 +6,4 @@ whatsapp_integration.patches.normalize_empty_whatsapp_message_ids
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated
 whatsapp_integration.patches.backfill_whatsapp_reactions
+whatsapp_integration.patches.register_product_carousel_template

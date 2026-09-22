@@ -153,7 +153,10 @@ def _send_invoice_whatsapp_async(sales_invoice):
                 "message_id": message_id,
                 "timestamp": frappe.utils.now_datetime().strftime("%H:%M:%S"),
                 "customer": doc.customer,
-                "custom_document": document_url
+                "custom_document": document_url,
+                "custom_template_header_type": "Document",
+                "custom_template_header_file": document_url,
+                "custom_template_footer": template.footer_text or "",
             }).insert(ignore_permissions=True)
             frappe.db.commit()
 

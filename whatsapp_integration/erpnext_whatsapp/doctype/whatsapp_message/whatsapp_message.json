@@ -21,7 +21,10 @@
   "custom_reply_to_sender",
   "custom_reply_to_text",
   "custom_template_type",
-  "custom_template_data"
+  "custom_template_data",
+  "custom_template_header_type",
+  "custom_template_header_file",
+  "custom_template_footer"
  ],
  "fields": [
   {
@@ -124,6 +127,29 @@
    "fieldtype": "Long Text",
    "hidden": 1,
    "label": "Template Data",
+   "read_only": 1
+  },
+  {
+   "default": "None",
+   "fieldname": "custom_template_header_type",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Template Header Type",
+   "options": "None\nDocument\nImage\nVideo",
+   "read_only": 1
+  },
+  {
+   "fieldname": "custom_template_header_file",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Template Header File",
+   "read_only": 1
+  },
+  {
+   "fieldname": "custom_template_footer",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Template Footer",
    "read_only": 1
   }
  ],

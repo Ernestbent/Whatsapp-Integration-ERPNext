@@ -11,47 +11,23 @@ wa.messages.render_media_content = function (message) {
         wa.carousel && typeof wa.carousel.render === "function" ? wa.carousel.render(message) : "";
     if (carouselHtml) return carouselHtml;
 
+    const configuredTemplateHeader = String(message.custom_template_header_type || "").toLowerCase();
+    const isTemplate =
+        type === "template" ||
+        Boolean(configuredTemplateHeader && configuredTemplateHeader !== "none") ||
+        Boolean(message.custom_template_header_file) ||
+        Boolean(message.custom_template_footer);
+    if (isTemplate && wa.templates && typeof wa.templates.render === "function") {
+        return wa.templates.render(message);
+    }
+
     if (!file_url) {
         return wa.utils.render_message_text(message_text);
     }
 
-    const isPDFFile = file_url.toLowerCase().endsWith(".pdf");
-
-    if (isPDFFile) {
-        const filename = file_url.split("/").pop();
-        const safeFileUrl = frappe.utils.escape_html(file_url);
-        const safeFilename = frappe.utils.escape_html(filename);
-
-        const pdfIconSvg = `
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect width="48" height="48" rx="8" fill="#DC2626"/>
-                <path d="M14 8C12.8954 8 12 8.89543 12 10V38C12 39.1046 12.8954 40 14 40H34C35.1046 40 36 39.1046 36 38V16L28 8H14Z" fill="#EF4444"/>
-                <path d="M28 8V14C28 15.1046 28.8954 16 30 16H36L28 8Z" fill="#FCA5A5"/>
-                <text x="24" y="30" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white" text-anchor="middle">PDF</text>
-            </svg>
-        `;
-
-        let captionText = "";
-        if (message_text && !message_text.startsWith("Document: ") && !message_text.startsWith("PDF: ")) {
-            captionText = wa.utils.render_message_text(message_text, "wa-message-text", "margin-top: 8px;");
-        }
-
-        return `
-            <div style="width: 100%;">
-                <div class="wa-document-preview" style="max-width: 100%; margin-bottom: 8px;">
-                    <div class="wa-doc-icon" style="background: transparent; display: flex; align-items: center; justify-content: center;">
-                        ${pdfIconSvg}
-                    </div>
-                    <div class="wa-doc-info">
-                        <div class="wa-doc-name">${safeFilename}</div>
-                        <div class="wa-doc-meta">
-                            <a href="${safeFileUrl}" target="_blank" download="${safeFilename}" class="wa-download-link">Click to download</a>
-                        </div>
-                    </div>
-                </div>
-                ${captionText}
-            </div>
-        `;
+    const isDocument = type === "document" || file_url.toLowerCase().split(/[?#]/)[0].endsWith(".pdf");
+    if (isDocument && wa.documents && typeof wa.documents.render === "function") {
+        return wa.documents.render(file_url, message_text, message.file_size || null);
     }
 
     switch (type) {
@@ -80,26 +56,8 @@ wa.messages.render_media_content = function (message) {
             return `<audio controls preload="metadata" src="${frappe.utils.escape_html(file_url)}"></audio>`;
         }
 
-        case "document": {
-            const docFilename = message_text
-                ? message_text.replace("Document: ", "").split(" – ")[0]
-                : file_url.split("/").pop();
-            const docFileExt = docFilename.split(".").pop().toUpperCase();
-            const docSafeFileUrl = frappe.utils.escape_html(file_url);
-            const docSafeFilename = frappe.utils.escape_html(docFilename);
-
-            return `
-                <div class="wa-document-preview">
-                    <div class="wa-doc-icon">${docFileExt}</div>
-                    <div class="wa-doc-info">
-                        <div class="wa-doc-name">${docSafeFilename}</div>
-                        <div class="wa-doc-meta">
-                            <a href="${docSafeFileUrl}" target="_blank" download="${docSafeFilename}" class="wa-download-link">Click to download</a>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
+        case "document":
+            return wa.utils.render_message_text(message_text || "Document");
 
         case "sticker":
             return `<div class="wa-media-container"><img src="${frappe.utils.escape_html(file_url)}" alt="Sticker" /></div>`;

@@ -332,6 +332,9 @@ def _send_template(phone, pdf_doc, parameters):
             "message_status": "sent",
             "message_id": message_id,
             "timestamp": frappe.utils.now_datetime().strftime("%H:%M:%S"),
+            "custom_template_header_type": "Document",
+            "custom_template_header_file": pdf_doc.file_url,
+            "custom_template_footer": template.footer_text or "",
         }
 
         meta = frappe.get_meta("Whatsapp Message")

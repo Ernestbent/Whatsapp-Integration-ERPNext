@@ -175,6 +175,10 @@
     align-items: center;
     gap: 8px;
     width: 200px;
+    min-height: 32px;
+}
+.wa-audio-player audio {
+    display: none;
 }
 .wa-audio-play {
     width: 30px;
@@ -186,28 +190,81 @@
     font-size: 12px;
     cursor: pointer;
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
+}
+.wa-audio-play:focus-visible,
+.wa-audio-progress:focus-visible {
+    outline: 2px solid rgba(0, 128, 105, 0.35);
+    outline-offset: 2px;
+}
+.wa-audio-play-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.wa-audio-play[data-state="play"] .wa-audio-play-icon {
+    transform: translateX(1px);
 }
 .wa-audio-progress {
     flex: 1;
+    height: 18px;
+    cursor: pointer;
+    position: relative;
+}
+.wa-audio-progress:before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 7px;
     height: 4px;
     background: rgba(0, 0, 0, 0.15);
     border-radius: 2px;
-    cursor: pointer;
-    position: relative;
 }
 .wa-audio-fill {
     position: absolute;
     left: 0;
-    top: 0;
+    top: 7px;
     height: 4px;
     width: 0%;
     background: #008069;
     border-radius: 2px;
 }
+.wa-audio-thumb {
+    position: absolute;
+    top: 4px;
+    left: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #008069;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.12s;
+}
+.wa-audio-progress:hover .wa-audio-thumb,
+.wa-audio-progress:focus-visible .wa-audio-thumb,
+.wa-audio-player.is-playing .wa-audio-thumb {
+    opacity: 1;
+}
 .wa-audio-time {
     font-size: 11px;
     color: #667781;
     flex-shrink: 0;
+    min-width: 30px;
+    text-align: right;
+}
+.wa-audio-player.has-error .wa-audio-progress {
+    opacity: 0.45;
+    pointer-events: none;
+}
+.wa-audio-player.has-error .wa-audio-time {
+    min-width: auto;
+    color: #c62828;
 }
 
 /* Product carousel bubble */
@@ -307,6 +364,208 @@
     color: #54656f;
     font-size: 11px;
     text-align: center;
+}
+
+/* Template message: HEADER (document/image/video) + BODY + optional footer,
+   all inside one bubble — the header sits flush against the bubble's own
+   rounded top corners with a small negative margin, matching how WhatsApp
+   itself renders a template's header edge-to-edge */
+.wa-template-header {
+    margin: -6px -9px 6px;
+    border-radius: 8px 8px 0 0;
+    overflow: hidden;
+}
+.wa-template-header-doc {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.55);
+    margin: -6px -9px 6px;
+    border-radius: 8px 8px 0 0;
+    padding: 8px 10px;
+    position: relative;
+    color: inherit;
+    text-decoration: none;
+}
+.wa-template-header-doc:hover,
+.wa-template-header-doc:focus {
+    color: inherit;
+    text-decoration: none;
+}
+.wa-template-header-image {
+    position: relative;
+    width: calc(100% + 18px);
+    height: 140px;
+    background: #e4e6e6;
+    cursor: pointer;
+}
+.wa-template-header-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.wa-template-header-fallback-text {
+    display: none;
+    position: absolute;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    color: #8a9098;
+    font-size: 12px;
+}
+.wa-template-header-broken .wa-template-header-fallback-text {
+    display: flex;
+}
+.wa-template-header-video {
+    position: relative;
+    width: calc(100% + 18px);
+    height: 140px;
+    background: #111;
+    cursor: pointer;
+}
+.wa-template-header-video video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+}
+.wa-template-header-play {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    color: #111;
+}
+.wa-template-body {
+    line-height: 1.5;
+}
+.wa-template-footer {
+    font-size: 10.5px;
+    color: #54656f;
+    margin-top: 6px;
+}
+
+/* Document / PDF card styled like WhatsApp's own native document bubble:
+   a folded-corner file icon, filename + meta beside it, and a circular
+   download button that appears on hover over the card */
+.wa-doc-card {
+    width: min(290px, 100%);
+    padding: 2px 2px 0;
+}
+.wa-doc-card-inner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0, 0, 0, 0.035);
+    border-radius: 6px;
+    padding: 8px;
+    position: relative;
+    cursor: pointer;
+    color: inherit;
+    text-decoration: none;
+}
+.wa-doc-card-inner:hover,
+.wa-doc-card-inner:focus {
+    color: inherit;
+    text-decoration: none;
+}
+.wa-doc-icon-shape {
+    position: relative;
+    width: 38px;
+    height: 48px;
+    flex-shrink: 0;
+}
+.wa-doc-icon-fold {
+    position: absolute;
+    inset: 0;
+    background: white;
+    border-radius: 2px 6px 2px 2px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+.wa-doc-icon-fold:before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 9px 9px 0;
+    border-color: transparent #e2e5e7 transparent transparent;
+}
+.wa-doc-icon-tag {
+    position: absolute;
+    left: 0;
+    bottom: 9px;
+    color: white;
+    font-size: 8.5px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 2px;
+    letter-spacing: 0.2px;
+}
+.wa-doc-card-info {
+    min-width: 0;
+    flex: 1;
+    padding-right: 24px;
+}
+.wa-doc-card-name {
+    font-size: 13px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.wa-doc-card-meta {
+    font-size: 11.5px;
+    color: #667781;
+    margin-top: 2px;
+}
+.wa-doc-download-circle {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #54656f;
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    text-decoration: none;
+}
+.wa-doc-card-inner:hover .wa-doc-download-circle {
+    opacity: 1;
+}
+.wa-doc-card-inner:focus-visible .wa-doc-download-circle,
+.wa-template-header-doc:hover .wa-doc-download-circle,
+.wa-template-header-doc:focus-visible .wa-doc-download-circle {
+    opacity: 1;
+}
+.wa-doc-caption {
+    font-size: 12.5px;
+    line-height: 1.4;
+    padding: 6px 4px 0;
+}
+
+@media (hover: none) {
+    .wa-doc-download-circle {
+        opacity: 1;
+    }
 }
 
 /* Contact detail panel, slides in from the right of the chat header */

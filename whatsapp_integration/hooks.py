@@ -26,23 +26,25 @@ app_license = "mit"
 
 # include js, css files in header of desk.html
 app_include_css = [
-    "/assets/whatsapp_integration/css/whatsapp.css?v=20260922.8",
-    "/assets/whatsapp_integration/css/wa_components.css?v=20260922.8"
+    "/assets/whatsapp_integration/css/whatsapp.css?v=20260922.12",
+    "/assets/whatsapp_integration/css/wa_components.css?v=20260922.12"
 ]
 app_include_js = [
     "/assets/whatsapp_integration/js/whatsapp_notification.js",
-    "/assets/whatsapp_integration/js/whatsapp/wa_utils.js?v=20260922.8",
-    "/assets/whatsapp_integration/js/whatsapp/wa_ticks.js?v=20260922.8",
-    "/assets/whatsapp_integration/js/whatsapp/wa_audio.js?v=20260922.8",
-    "/assets/whatsapp_integration/js/whatsapp/wa_carousel.js?v=20260922.8",
-    "/assets/whatsapp_integration/js/whatsapp/wa_reply.js?v=20260922.8",
-    "/assets/whatsapp_integration/js/whatsapp/wa_reactions.js?v=20260922.8",
-    "/assets/whatsapp_integration/js/whatsapp/wa_actions.js?v=20260922.8",
-    "/assets/whatsapp_integration/js/whatsapp/wa_contact_panel.js?v=20260922.8",
-    "/assets/whatsapp_integration/js/whatsapp/wa_sidebar.js?v=20260922.8",
-    "/assets/whatsapp_integration/js/whatsapp/wa_messages.js?v=20260922.8",
-    "/assets/whatsapp_integration/js/whatsapp/wa_input.js?v=20260922.8",
-    "/assets/whatsapp_integration/js/whatsapp/wa_realtime.js?v=20260922.8"
+    "/assets/whatsapp_integration/js/whatsapp/wa_utils.js?v=20260922.12",
+    "/assets/whatsapp_integration/js/whatsapp/wa_ticks.js?v=20260922.12",
+    "/assets/whatsapp_integration/js/whatsapp/wa_audio.js?v=20260922.12",
+    "/assets/whatsapp_integration/js/whatsapp/wa_documents.js?v=20260922.12",
+    "/assets/whatsapp_integration/js/whatsapp/wa_templates.js?v=20260922.12",
+    "/assets/whatsapp_integration/js/whatsapp/wa_carousel.js?v=20260922.12",
+    "/assets/whatsapp_integration/js/whatsapp/wa_reply.js?v=20260922.12",
+    "/assets/whatsapp_integration/js/whatsapp/wa_reactions.js?v=20260922.12",
+    "/assets/whatsapp_integration/js/whatsapp/wa_actions.js?v=20260922.12",
+    "/assets/whatsapp_integration/js/whatsapp/wa_contact_panel.js?v=20260922.12",
+    "/assets/whatsapp_integration/js/whatsapp/wa_sidebar.js?v=20260922.12",
+    "/assets/whatsapp_integration/js/whatsapp/wa_messages.js?v=20260922.12",
+    "/assets/whatsapp_integration/js/whatsapp/wa_input.js?v=20260922.12",
+    "/assets/whatsapp_integration/js/whatsapp/wa_realtime.js?v=20260922.12"
 ]
 
 

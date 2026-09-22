@@ -12,6 +12,9 @@
   "enabled",
   "content_type",
   "attach_blia",
+  "is_carousel",
+  "carousel_price_list",
+  "carousel_items",
   "template_section",
   "name1",
   "column_break_gykr",
@@ -96,6 +99,27 @@
    "fieldname": "attach_blia",
    "fieldtype": "Attach",
    "label": "Upload"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_carousel",
+   "fieldtype": "Check",
+   "label": "Carousel Broadcast",
+   "read_only": 1
+  },
+  {
+   "fieldname": "carousel_price_list",
+   "fieldtype": "Link",
+   "label": "Carousel Price List",
+   "options": "Price List",
+   "read_only": 1
+  },
+  {
+   "fieldname": "carousel_items",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Carousel Items",
+   "read_only": 1
   },
   {
    "fieldname": "tracking_section",

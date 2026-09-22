@@ -260,7 +260,14 @@ def send_whatsapp_template_message(phone, template_name, parameters=None, custom
                 "message_status": "sent",
                 "message_id": message_id,
                 "timestamp": frappe.utils.now_datetime().strftime("%H:%M:%S"),
-                "customer": customer
+                "customer": customer,
+                "custom_template_header_type": {
+                    "documentation": "Document",
+                    "image": "Image",
+                    "video": "Video",
+                }.get(header_type, "None"),
+                "custom_template_header_file": document_url or "",
+                "custom_template_footer": template.footer_text or "",
             }
             
             # If template has document header, add the document to log

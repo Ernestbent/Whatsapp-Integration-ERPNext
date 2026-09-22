@@ -207,7 +207,14 @@ def send_whatsapp_template_message(
                 "message_status": "sent",
                 "message_id": message_id,
                 "timestamp": frappe.utils.now_datetime().strftime("%H:%M:%S"),
-                "customer": customer
+                "customer": customer,
+                "custom_template_header_type": {
+                    "documentation": "Document",
+                    "image": "Image",
+                    "video": "Video",
+                }.get(header_type, "None"),
+                "custom_template_header_file": document_url or template.media_example or "",
+                "custom_template_footer": template.footer_text or "",
             }
             
             # If template has document header, add the document to log
@@ -227,6 +234,162 @@ def send_whatsapp_template_message(
     except Exception as e:
         frappe.log_error(f"WhatsApp Send Exception: {str(e)}\n\nPayload: {json.dumps(payload, indent=2)}", "WhatsApp Template Send")
         return {"success": False, "error": str(e)}
+
+
+def build_whatsapp_carousel_component(cards):
+    """Build Meta's positional card components for an approved media carousel."""
+    if not 2 <= len(cards or []) <= 10:
+        frappe.throw("A WhatsApp carousel must contain between 2 and 10 cards")
+
+    carousel_cards = []
+    for card_index, card in enumerate(cards):
+        if not card.get("media_id"):
+            frappe.throw(f"Missing uploaded image for carousel card {card_index + 1}")
+
+        carousel_cards.append({
+            "card_index": card_index,
+            "components": [
+                {
+                    "type": "header",
+                    "parameters": [{
+                        "type": "image",
+                        "image": {"id": card["media_id"]},
+                    }],
+                },
+                {
+                    "type": "body",
+                    "parameters": [
+                        {"type": "text", "text": str(card.get("item_name") or card.get("item_code") or "")},
+                        {"type": "text", "text": str(card.get("price_text") or "")},
+                    ],
+                },
+            ],
+        })
+
+    return {"type": "carousel", "cards": carousel_cards}
+
+
+def send_whatsapp_carousel_template_message(phone, template_name, cards, customer=None):
+    """Send an approved media carousel and store enough data to redraw it in chat."""
+    carousel_component = build_whatsapp_carousel_component(cards)
+
+    settings = frappe.get_single("Whatsapp Setting")
+    access_token = settings.get_password("access_token") or settings.get("access_token")
+    phone_number_id = settings.get("phone_number_id")
+    api_version = str(settings.get("app_version") or "v24.0").strip()
+    if not api_version.startswith("v"):
+        api_version = f"v{api_version}"
+
+    if not access_token or not phone_number_id:
+        frappe.throw("Missing Access Token or Phone Number ID in WhatsApp Settings")
+
+    template = frappe.db.get_value(
+        "Whatsapp Message Template",
+        {"template_name": template_name},
+        ["template_name", "status", "language", "body_text"],
+        as_dict=True,
+    )
+    if not template:
+        frappe.throw(f"Template '{template_name}' not found")
+    if (template.status or "").lower() != "approved":
+        frappe.throw(f"Template '{template_name}' is not approved yet. Status: {template.status}")
+
+    phone = re.sub(r"\D", "", str(phone or ""))
+    if phone.startswith("0"):
+        phone = phone[1:]
+    if phone and not phone.startswith("256"):
+        phone = "256" + phone
+
+    template_code = re.sub(r"[^a-z0-9_]", "_", template.template_name.lower().replace(" ", "_"))
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": phone,
+        "type": "template",
+        "template": {
+            "name": template_code,
+            "language": {"code": template.language or "en"},
+            "components": [carousel_component],
+        },
+    }
+
+    url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
+    try:
+        response = requests.post(
+            url,
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=30,
+        )
+        result = response.json()
+        if response.status_code != 200 or not result.get("messages"):
+            error_msg = result.get("error", {}).get("message", str(result))
+            frappe.log_error(
+                f"WhatsApp carousel send failed: {error_msg}\n\n"
+                f"Payload: {json.dumps(payload, indent=2)}\n\n"
+                f"Response: {json.dumps(result, indent=2)}",
+                "WhatsApp Carousel Send",
+            )
+            return {"success": False, "error": error_msg}
+
+        message_id = result["messages"][0]["id"]
+        intro = template.body_text or "Product carousel"
+        display_cards = [{
+            "item_code": card.get("item_code"),
+            "name": card.get("item_name") or card.get("item_code"),
+            "price": " ".join(filter(None, [card.get("currency"), card.get("price_text")])),
+            "image_url": card.get("image"),
+            "view_url": card.get("view_url") or "",
+            "order_reply_text": f"I would like to order {card.get('item_name') or card.get('item_code')}",
+        } for card in cards]
+
+        log = frappe.get_doc({
+            "doctype": "Whatsapp Message",
+            "from_number": phone,
+            "message_type": "template",
+            "custom_status": "Outgoing",
+            "message": intro,
+            "message_status": "sent",
+            "message_id": message_id,
+            "timestamp": frappe.utils.now_datetime().strftime("%H:%M:%S"),
+            "customer": customer,
+            "custom_template_type": "carousel",
+            "custom_template_data": json.dumps({"intro": intro, "cards": display_cards}),
+        })
+        log.insert(ignore_permissions=True)
+        frappe.db.commit()
+
+        try:
+            frappe.publish_realtime(
+                event="whatsapp_new_message",
+                message={
+                    "contact_number": phone,
+                    "message_name": log.name,
+                    "message_id": message_id,
+                    "message_type": "outgoing",
+                    "whatsapp_type": "carousel",
+                    "message_text": intro,
+                    "customer": customer or "",
+                    "message_status": "sent",
+                    "timestamp": frappe.utils.now_datetime().isoformat(),
+                    "action": "new_outgoing_message",
+                },
+                user=None,
+            )
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "WhatsApp Carousel Realtime Event")
+        return {"success": True, "message_id": message_id, "doc_name": log.name}
+    except requests.exceptions.RequestException as exc:
+        frappe.log_error(f"Network error sending WhatsApp carousel: {exc}", "WhatsApp Carousel Network Error")
+        return {"success": False, "error": f"Network error - {exc}"}
+    except Exception as exc:
+        frappe.log_error(
+            f"WhatsApp carousel send exception: {exc}\n\nPayload: {json.dumps(payload, indent=2)}",
+            "WhatsApp Carousel Send",
+        )
+        return {"success": False, "error": str(exc)}
 
 
 def send_payment_whatsapp_async(doc_name):
