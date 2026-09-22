@@ -346,7 +346,7 @@
    "property": "field_order",
    "property_type": "Data",
    "row_name": null,
-   "value": "[\"from_number\", \"message_type\", \"custom_status\", \"message\", \"message_status\", \"custom_reaction\", \"column_break_kzpm\", \"media_id\", \"message_id\", \"timestamp\", \"customer\", \"custom_user\", \"custom_document\", \"custom_read\"]"
+   "value": "[\"from_number\", \"message_type\", \"custom_status\", \"message\", \"message_status\", \"custom_reaction\", \"custom_reaction_from\", \"custom_reactions\", \"column_break_kzpm\", \"media_id\", \"message_id\", \"timestamp\", \"customer\", \"custom_user\", \"custom_document\", \"custom_read\", \"custom_reply_to_name\", \"custom_reply_to_sender\", \"custom_reply_to_text\", \"custom_template_type\", \"custom_template_data\"]"
   }
  ],
  "sync_on_migrate": 1

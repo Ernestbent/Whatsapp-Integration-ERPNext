@@ -5,6 +5,36 @@ import mimetypes
 import os
 from datetime import datetime
 
+from whatsapp_integration.erpnext_whatsapp.custom_scripts.reaction_state import update_message_reaction
+
+
+CHAT_ROLES = ("CRM", "System Manager")
+SUPPORTED_REACTIONS = {"", "👍", "❤️", "😂", "😮", "😢", "🙏"}
+
+
+def _get_reply_metadata(reply_to_message_id):
+    """Return the local quote information for a WhatsApp context message."""
+    if not reply_to_message_id:
+        return {}
+
+    original = frappe.db.get_value(
+        "Whatsapp Message",
+        {"message_id": reply_to_message_id},
+        ["name", "message", "custom_status", "customer", "from_number"],
+        as_dict=True,
+    )
+    if not original:
+        return {}
+
+    sender = "You" if original.custom_status != "Incoming" else (
+        original.customer or original.from_number or "Contact"
+    )
+    return {
+        "custom_reply_to_name": original.name,
+        "custom_reply_to_sender": sender,
+        "custom_reply_to_text": (original.message or "Attachment")[:240],
+    }
+
 
 ## Real-time Event Emitter for Send Reply
 def emit_whatsapp_send_event(
@@ -61,7 +91,7 @@ def send_whatsapp_reply(to_number, message_body, reply_to_message_id=None):
     settings = frappe.get_single("Whatsapp Setting")
     phone_id = settings.get("phone_number_id")
     token = settings.get("access_token")
-    version = settings.get("api_version", "v24.0")
+    version = settings.get("app_version") or "v24.0"
 
     if not phone_id or not token:
         return {"success": False, "error": "Missing Phone Number ID or Access Token"}
@@ -99,7 +129,7 @@ def send_whatsapp_reply(to_number, message_body, reply_to_message_id=None):
             "name") or ""
 
         # SAVE AS OUTGOING WITH MESSAGE_ID
-        doc = frappe.get_doc({
+        doc_data = {
             "doctype": "Whatsapp Message",
             "from_number": to_number,
             "message": message_body,
@@ -109,7 +139,9 @@ def send_whatsapp_reply(to_number, message_body, reply_to_message_id=None):
             "custom_status": "Outgoing",
             "message_status": "pending",
             "message_id": sent_msg_id  # CRITICAL: Save WhatsApp message ID
-        })
+        }
+        doc_data.update(_get_reply_metadata(reply_to_message_id))
+        doc = frappe.get_doc(doc_data)
         doc.insert(ignore_permissions=True)
         frappe.db.commit()
 
@@ -142,6 +174,83 @@ def send_whatsapp_reply(to_number, message_body, reply_to_message_id=None):
 
 
 @frappe.whitelist()
+def send_whatsapp_reaction(message_id, emoji=""):
+    """React to an incoming WhatsApp message, or remove our reaction."""
+    frappe.only_for(CHAT_ROLES)
+    message_id = str(message_id or "").strip()
+    emoji = str(emoji or "")
+    if not message_id:
+        return {"success": False, "error": "A WhatsApp message ID is required"}
+    if emoji not in SUPPORTED_REACTIONS:
+        return {"success": False, "error": "Unsupported reaction"}
+
+    targets = frappe.get_all(
+        "Whatsapp Message",
+        filters={"message_id": message_id},
+        fields=["name", "custom_status", "from_number"],
+        limit_page_length=2,
+    )
+    if not targets:
+        return {"success": False, "error": "Message not found"}
+    if len(targets) != 1:
+        frappe.log_error(
+            title="Duplicate WhatsApp Message ID",
+            message=f"Cannot attach reaction: {message_id} matches multiple records.",
+        )
+        return {"success": False, "error": "Message ID is not unique"}
+
+    target = targets[0]
+    if target.custom_status != "Incoming":
+        return {"success": False, "error": "Only incoming messages can be reacted to"}
+
+    settings = frappe.get_single("Whatsapp Setting")
+    phone_id = settings.get("phone_number_id")
+    token = settings.get("access_token")
+    version = settings.get("app_version") or "v24.0"
+    if not phone_id or not token:
+        return {"success": False, "error": "Missing Phone Number ID or Access Token"}
+
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": target.from_number,
+        "type": "reaction",
+        "reaction": {"message_id": message_id, "emoji": emoji or ""},
+    }
+
+    try:
+        response = requests.post(
+            f"https://graph.facebook.com/{version}/{phone_id}/messages",
+            json=payload,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=30,
+        )
+        response.raise_for_status()
+        update_message_reaction(target.name, "me", emoji)
+        frappe.publish_realtime(
+            event="whatsapp_message_reaction_changed",
+            message={
+                "message_name": target.name,
+                "contact_number": target.from_number,
+                "emoji": emoji,
+                "from": "me",
+            },
+            user=None,
+            after_commit=True,
+        )
+        frappe.db.commit()
+        return {"success": True}
+    except Exception as exc:
+        error_message = str(exc)
+        try:
+            error_message = response.json().get("error", {}).get("message") or error_message
+        except Exception:
+            pass
+        frappe.log_error(title="WhatsApp Reaction Failed", message=error_message)
+        return {"success": False, "error": error_message}
+
+
+@frappe.whitelist()
 def send_notification_message(to_number, message_body, customer_name=None):
     """
     Send WhatsApp notification message (for automated notifications)
@@ -158,7 +267,7 @@ def send_whatsapp_attachment(to_number, file_data=None, filename=None, file_type
     settings = frappe.get_single("Whatsapp Setting")
     phone_id = settings.get("phone_number_id")
     token = settings.get("access_token")
-    version = settings.get("api_version", "v24.0")
+    version = settings.get("app_version") or "v24.0"
 
     if not phone_id or not token:
         return {"success": False, "error": "Missing Phone Number ID or Access Token"}
@@ -269,7 +378,7 @@ def send_whatsapp_media_message(to_number, media_id, filename, file_type, captio
     """Send a media message using media ID"""
     phone_id = settings.get("phone_number_id")
     token = settings.get("access_token")
-    version = settings.get("api_version", "v24.0")
+    version = settings.get("app_version") or "v24.0"
     url = f"https://graph.facebook.com/{version}/{phone_id}/messages"
 
     # Determine message type
@@ -365,7 +474,7 @@ def send_whatsapp_attachment_by_url(to_number, file_url, filename, file_type, ca
     """Send attachment using direct URL (fallback)"""
     phone_id = settings.get("phone_number_id")
     token = settings.get("access_token")
-    version = settings.get("api_version", "v24.0")
+    version = settings.get("app_version") or "v24.0"
     url = f"https://graph.facebook.com/{version}/{phone_id}/messages"
 
     if file_type.startswith('image/'):

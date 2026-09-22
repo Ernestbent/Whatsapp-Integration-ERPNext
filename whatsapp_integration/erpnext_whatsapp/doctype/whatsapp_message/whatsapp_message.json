@@ -14,7 +14,14 @@
   "media_id",
   "message_id",
   "timestamp",
-  "customer"
+  "customer",
+  "custom_reaction_from",
+  "custom_reactions",
+  "custom_reply_to_name",
+  "custom_reply_to_sender",
+  "custom_reply_to_text",
+  "custom_template_type",
+  "custom_template_data"
  ],
  "fields": [
   {
@@ -62,12 +69,62 @@
   {
    "fieldname": "message_id",
    "fieldtype": "Data",
-   "label": "Message ID"
+   "label": "Message ID",
+   "unique": 1
   },
   {
    "fieldname": "message_status",
    "fieldtype": "Data",
    "label": "Message Status"
+  },
+  {
+   "fieldname": "custom_reaction_from",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Reaction From",
+   "read_only": 1
+  },
+  {
+   "fieldname": "custom_reactions",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Reactions",
+   "read_only": 1
+  },
+  {
+   "fieldname": "custom_reply_to_name",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Reply To Message",
+   "read_only": 1
+  },
+  {
+   "fieldname": "custom_reply_to_sender",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Reply To Sender",
+   "read_only": 1
+  },
+  {
+   "fieldname": "custom_reply_to_text",
+   "fieldtype": "Small Text",
+   "hidden": 1,
+   "label": "Reply To Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "custom_template_type",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Template Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "custom_template_data",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Template Data",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

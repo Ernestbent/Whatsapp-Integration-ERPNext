@@ -1,11 +1,14 @@
 import frappe
 import json
 import hashlib
+import hmac
 import requests
 import os
 import mimetypes
 from werkzeug.wrappers import Response
 from datetime import datetime
+
+from whatsapp_integration.erpnext_whatsapp.custom_scripts.reaction_state import update_message_reaction
 
 
 ## Text Normalization
@@ -41,13 +44,39 @@ MAX_CACHE_SIZE = 100
 
 def is_duplicate_webhook(raw_data):
     global webhook_cache
-    h = hashlib.md5(str(raw_data).encode()).hexdigest()
-    if h in webhook_cache:
+    payload_hash = hashlib.sha256(raw_data if isinstance(raw_data, bytes) else str(raw_data).encode()).hexdigest()
+    if payload_hash in webhook_cache:
         return True
-    webhook_cache.append(h)
+    webhook_cache.append(payload_hash)
     if len(webhook_cache) > MAX_CACHE_SIZE:
         webhook_cache.pop(0)
     return False
+
+
+def is_valid_meta_signature(raw_body, provided_signature, app_secret):
+    """Validate Meta's sha256 HMAC signature against the exact request bytes."""
+    if not raw_body or not provided_signature or not app_secret:
+        return False
+    if isinstance(raw_body, str):
+        raw_body = raw_body.encode("utf-8")
+    expected = "sha256=" + hmac.new(
+        app_secret.encode("utf-8"),
+        raw_body,
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(expected, provided_signature)
+
+
+def get_whatsapp_app_secret(settings):
+    """Read the encrypted App Secret without exposing it through document JSON."""
+    try:
+        return settings.get_password("app_secret", raise_exception=False)
+    except Exception:
+        return None
+
+
+def normalize_phone(value):
+    return "".join(character for character in str(value or "") if character.isdigit())
 
 
 ## Real-time Event Emitter
@@ -161,20 +190,39 @@ def receive_whatsapp():
 ## Webhook Verification Handler
 def handle_verification():
     args = frappe.request.args
-    if args.get("hub.mode") == "subscribe" and args.get("hub.verify_token") == "vibecode":
+    settings = frappe.get_single("Whatsapp Setting")
+    expected_token = str(settings.get("webhook_verify_token") or "")
+    provided_token = str(args.get("hub.verify_token") or "")
+    token_matches = bool(expected_token) and hmac.compare_digest(provided_token, expected_token)
+    if args.get("hub.mode") == "subscribe" and token_matches:
         return Response(args.get("hub.challenge"), status=200, content_type="text/plain")
     return Response("Forbidden", status=403)
 
 
 ## Process Webhook Data
 def handle_webhook_data():
-    raw = frappe.local.request.get_data(as_text=True)
-    if not raw:
+    raw_body = frappe.local.request.get_data()
+    if not raw_body:
         return {"status": "received"}
 
+    settings = frappe.get_single("Whatsapp Setting")
+    app_secret = get_whatsapp_app_secret(settings)
+    if app_secret:
+        provided_signature = frappe.get_request_header("X-Hub-Signature-256") or ""
+        if not is_valid_meta_signature(raw_body, provided_signature, app_secret):
+            frappe.logger("whatsapp_webhook").warning("Rejected webhook with an invalid Meta signature")
+            return Response("Forbidden", status=403)
+    else:
+        # Backward-compatible rollout: signature validation activates automatically
+        # as soon as App Secret is entered in Whatsapp Setting.
+        frappe.logger("whatsapp_webhook").warning(
+            "Whatsapp Setting has no App Secret; webhook signature validation is not active"
+        )
+
+    raw = raw_body.decode("utf-8")
     save_raw_payload(raw)
 
-    if is_duplicate_webhook(raw):
+    if is_duplicate_webhook(raw_body):
         return {"status": "received"}
 
     try:
@@ -266,6 +314,10 @@ def handle_single_message(message):
         msg_type    = message.get("type")
         from_number = message.get("from")
         msg_id      = message.get("id")
+
+        if msg_type == "reaction":
+            handle_incoming_reaction(message)
+            return
 
         message_text    = ""
         media_id        = ""
@@ -409,6 +461,59 @@ def handle_single_message(message):
         frappe.log_error("Message Processing Error", frappe.get_traceback())
 
 
+def handle_incoming_reaction(message):
+    """Store a customer's reaction on the message it references."""
+    reaction = message.get("reaction", {})
+    target_message_id = reaction.get("message_id")
+    reacting_contact = normalize_phone(message.get("from"))
+    if not target_message_id or not reacting_contact:
+        frappe.log_error(
+            title="Invalid WhatsApp Reaction",
+            message="Incoming reaction is missing its target message ID or contact number.",
+        )
+        return
+
+    targets = frappe.get_all(
+        "Whatsapp Message",
+        filters={"message_id": target_message_id},
+        fields=["name", "from_number"],
+        limit_page_length=2,
+    )
+    if not targets:
+        frappe.log_error(
+            title="Unmatched WhatsApp Reaction",
+            message=f"No local message matches WhatsApp message ID {target_message_id}.",
+        )
+        return
+    if len(targets) != 1:
+        frappe.log_error(
+            title="Duplicate WhatsApp Message ID",
+            message=f"Reaction target {target_message_id} matches multiple local messages.",
+        )
+        return
+
+    target = targets[0]
+    if normalize_phone(target.from_number) != reacting_contact:
+        frappe.log_error(
+            title="WhatsApp Reaction Contact Mismatch",
+            message=(
+                f"Contact {reacting_contact} attempted to react to message {target_message_id} "
+                f"owned by {normalize_phone(target.from_number)}."
+            ),
+        )
+        return
+
+    emoji = reaction.get("emoji") or ""
+    update_message_reaction(target.name, "contact", emoji)
+    emit_whatsapp_event("whatsapp_message_reaction_changed", {
+        "message_name": target.name,
+        "contact_number": target.from_number,
+        "emoji": emoji,
+        "from": "contact",
+    })
+    frappe.db.commit()
+
+
 ## Check if message is opt-in
 def check_for_optin_message(text):
     if not text:
@@ -456,7 +561,7 @@ def save_whatsapp_message(message, message_text, media_id="", public_file_url=No
             int(message.get("timestamp", datetime.now().timestamp()))
         ).strftime("%H:%M:%S")
 
-        doc = frappe.get_doc({
+        doc_data = {
             "doctype":        "Whatsapp Message",
             "from_number":    from_number,
             "message_type":   message.get("type"),
@@ -467,7 +572,26 @@ def save_whatsapp_message(message, message_text, media_id="", public_file_url=No
             "custom_status":  "Incoming",
             "message_id":     msg_id,
             "message_status": "received"
-        })
+        }
+
+        context_message_id = (message.get("context") or {}).get("id")
+        if context_message_id:
+            original = frappe.db.get_value(
+                "Whatsapp Message",
+                {"message_id": context_message_id},
+                ["name", "message", "custom_status", "customer", "from_number"],
+                as_dict=True,
+            )
+            if original:
+                doc_data.update({
+                    "custom_reply_to_name": original.name,
+                    "custom_reply_to_sender": "You" if original.custom_status != "Incoming" else (
+                        original.customer or original.from_number or "Contact"
+                    ),
+                    "custom_reply_to_text": (original.message or "Attachment")[:240],
+                })
+
+        doc = frappe.get_doc(doc_data)
         doc.insert(ignore_permissions=True)
 
         # Save file URL if media was downloaded

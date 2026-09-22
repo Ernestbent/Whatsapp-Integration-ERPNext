@@ -25,9 +25,24 @@ app_license = "mit"
 # ------------------
 
 # include js, css files in header of desk.html
-# app_include_css = "/assets/whatsapp_integration/css/whatsapp_integration.css"
+app_include_css = [
+    "/assets/whatsapp_integration/css/whatsapp.css?v=20260922.8",
+    "/assets/whatsapp_integration/css/wa_components.css?v=20260922.8"
+]
 app_include_js = [
-    "/assets/whatsapp_integration/js/whatsapp_notification.js"
+    "/assets/whatsapp_integration/js/whatsapp_notification.js",
+    "/assets/whatsapp_integration/js/whatsapp/wa_utils.js?v=20260922.8",
+    "/assets/whatsapp_integration/js/whatsapp/wa_ticks.js?v=20260922.8",
+    "/assets/whatsapp_integration/js/whatsapp/wa_audio.js?v=20260922.8",
+    "/assets/whatsapp_integration/js/whatsapp/wa_carousel.js?v=20260922.8",
+    "/assets/whatsapp_integration/js/whatsapp/wa_reply.js?v=20260922.8",
+    "/assets/whatsapp_integration/js/whatsapp/wa_reactions.js?v=20260922.8",
+    "/assets/whatsapp_integration/js/whatsapp/wa_actions.js?v=20260922.8",
+    "/assets/whatsapp_integration/js/whatsapp/wa_contact_panel.js?v=20260922.8",
+    "/assets/whatsapp_integration/js/whatsapp/wa_sidebar.js?v=20260922.8",
+    "/assets/whatsapp_integration/js/whatsapp/wa_messages.js?v=20260922.8",
+    "/assets/whatsapp_integration/js/whatsapp/wa_input.js?v=20260922.8",
+    "/assets/whatsapp_integration/js/whatsapp/wa_realtime.js?v=20260922.8"
 ]
 
 
@@ -295,8 +310,7 @@ scheduler_events = {
 
 
 fixtures = [
-    {"doctype": "Whatsapp Message Template"},
-    {"doctype": "Whatsapp Setting"}
+    {"doctype": "Whatsapp Message Template"}
 ]
 
-csrf_exempt = ["/api/method/whatsapp_integration.whatsapp_webhook.receive_whatsapp"]
+csrf_exempt = ["/api/method/whatsapp_integration.whatsapp_webhook.webhook.receive_whatsapp"]

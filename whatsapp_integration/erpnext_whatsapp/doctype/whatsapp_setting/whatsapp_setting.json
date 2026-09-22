@@ -11,6 +11,7 @@
   "business_account_id",
   "webhook_verify_token",
   "app_id",
+  "app_secret",
   "app_version"
  ],
  "fields": [
@@ -43,6 +44,12 @@
    "fieldname": "app_id",
    "fieldtype": "Data",
    "label": "App ID"
+  },
+  {
+   "description": "Meta App Secret used to validate X-Hub-Signature-256 webhook signatures.",
+   "fieldname": "app_secret",
+   "fieldtype": "Password",
+   "label": "App Secret"
   },
   {
    "fieldname": "app_version",

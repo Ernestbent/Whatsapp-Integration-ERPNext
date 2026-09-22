@@ -1,0 +1,478 @@
+/* wa_components.css — reply, actions, reactions, audio player, carousel, contact panel */
+
+/* Message actions button (appears on hover) and its dropdown menu */
+.wa-msg-actions-btn {
+    display: none;
+    position: absolute;
+    top: 2px;
+    right: -30px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #e9edef;
+    color: #54656f;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+}
+.wa-message.outgoing .wa-msg-actions-btn {
+    right: auto;
+    left: -30px;
+}
+.wa-message:hover .wa-msg-actions-btn {
+    display: flex;
+}
+.wa-msg-menu {
+    position: absolute;
+    top: 26px;
+    right: -30px;
+    background: white;
+    border: 1px solid #e9edef;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 130px;
+    padding: 4px 0;
+    z-index: 50;
+    display: none;
+}
+.wa-message.outgoing .wa-msg-menu {
+    right: auto;
+    left: -30px;
+}
+.wa-msg-menu.show {
+    display: block;
+}
+.wa-msg-menu-item {
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #111b21;
+}
+.wa-msg-menu-item:hover {
+    background: #f0f2f5;
+}
+.wa-msg-menu-item.danger {
+    color: #a32d2d;
+}
+
+/* Quoted reply block shown inside a bubble */
+.wa-reply-quote {
+    background: rgba(0, 0, 0, 0.06);
+    border-left: 3px solid #008069;
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin-bottom: 4px;
+    font-size: 12.5px;
+    color: #54656f;
+    cursor: pointer;
+}
+.wa-reply-quote-sender {
+    display: block;
+    color: #008069;
+    font-weight: 500;
+    font-size: 12px;
+}
+
+/* Reply preview bar above the composer */
+.wa-reply-bar {
+    background: #f0f2f5;
+    padding: 8px 12px 0;
+    display: none;
+}
+.wa-reply-bar.show {
+    display: block;
+}
+.wa-reply-bar-inner {
+    background: white;
+    border-radius: 6px;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-left: 3px solid #008069;
+}
+.wa-reply-bar-text {
+    font-size: 12.5px;
+    color: #54656f;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.wa-reply-bar-sender,
+.wa-reply-bar-preview {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.wa-reply-bar-sender {
+    color: #008069;
+    font-weight: 500;
+}
+.wa-reply-bar-close {
+    cursor: pointer;
+    color: #54656f;
+    font-size: 18px;
+    line-height: 1;
+    flex-shrink: 0;
+    border: 0;
+    background: transparent;
+    padding: 2px 4px;
+}
+
+/* Reaction pills under a bubble and the picker that adds them */
+.wa-reactions {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+.wa-reaction-pill {
+    background: white;
+    border: 1px solid #e1e3eb;
+    border-radius: 12px;
+    padding: 1px 7px;
+    font-size: 11.5px;
+    color: #111b21;
+    cursor: pointer;
+}
+.wa-reaction-pill.me {
+    background: #e7fce3;
+    border-color: #25d366;
+    color: #0b5d2a;
+}
+.wa-reaction-picker {
+    position: absolute;
+    top: -38px;
+    left: 0;
+    background: white;
+    border: 1px solid #e9edef;
+    border-radius: 22px;
+    padding: 4px 6px;
+    display: none;
+    gap: 2px;
+    z-index: 51;
+}
+.wa-reaction-picker.show {
+    display: flex;
+}
+.wa-reaction-picker span {
+    font-size: 18px;
+    padding: 3px;
+    cursor: pointer;
+    border-radius: 50%;
+}
+.wa-reaction-picker span:hover {
+    background: #f0f2f5;
+}
+
+/* Voice-note player */
+.wa-audio-player {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 200px;
+}
+.wa-audio-play {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #008069;
+    border: none;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.wa-audio-progress {
+    flex: 1;
+    height: 4px;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 2px;
+    cursor: pointer;
+    position: relative;
+}
+.wa-audio-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 4px;
+    width: 0%;
+    background: #008069;
+    border-radius: 2px;
+}
+.wa-audio-time {
+    font-size: 11px;
+    color: #667781;
+    flex-shrink: 0;
+}
+
+/* Product carousel bubble */
+.wa-carousel-bubble {
+    width: min(700px, 100%);
+    max-width: 100% !important;
+    background: #d9fdd3 !important;
+}
+.wa-carousel-message {
+    width: 100%;
+}
+.wa-carousel-message .wa-message-content {
+    flex: 1;
+    max-width: calc(100% - 24px);
+}
+.wa-carousel-intro {
+    font-size: 13px;
+    line-height: 1.4;
+    margin-bottom: 8px;
+}
+.wa-carousel-wrap {
+    position: relative;
+}
+.wa-carousel-strip {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+}
+.wa-carousel-strip::-webkit-scrollbar {
+    display: none;
+}
+.wa-carousel-card {
+    flex: 0 0 160px;
+    scroll-snap-align: start;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.wa-carousel-img {
+    height: 96px;
+    background-size: cover;
+    background-position: center;
+    background-color: #f0f2f5;
+}
+.wa-carousel-body {
+    padding: 8px 10px 6px;
+    flex: 1;
+}
+.wa-carousel-name {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.3;
+}
+.wa-carousel-price {
+    font-size: 12px;
+    color: #667781;
+    margin-top: 2px;
+}
+.wa-carousel-btn {
+    border-top: 1px solid #e9edef;
+    text-align: center;
+    padding: 7px 4px;
+    font-size: 12.5px;
+    color: #008069;
+    font-weight: 500;
+    cursor: pointer;
+}
+.wa-carousel-btn:hover {
+    background: #f0f2f5;
+}
+.wa-carousel-arrow {
+    position: absolute;
+    top: 40px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: white;
+    border: 1px solid #d1d7db;
+    color: #54656f;
+    font-size: 16px;
+    cursor: pointer;
+    z-index: 2;
+}
+.wa-carousel-arrow.left {
+    left: -6px;
+}
+.wa-carousel-arrow.right {
+    right: -6px;
+}
+.wa-carousel-count {
+    margin-top: 6px;
+    color: #54656f;
+    font-size: 11px;
+    text-align: center;
+}
+
+/* Contact detail panel, slides in from the right of the chat header */
+.wa-contact-panel {
+    display: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 300px;
+    height: 100%;
+    background: white;
+    border-left: 1px solid #e9edef;
+    z-index: 60;
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    overflow-y: auto;
+}
+.wa-contact-panel.show {
+    display: block;
+    transform: translateX(0);
+}
+.wa-contact-panel-header {
+    background: #008069;
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.wa-contact-panel-close {
+    cursor: pointer;
+    font-size: 20px;
+}
+.wa-contact-panel-body {
+    padding: 20px;
+    text-align: center;
+}
+.wa-contact-panel-avatar {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: #128c7e;
+    color: white;
+    font-size: 32px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+}
+.wa-contact-panel-name {
+    font-size: 16px;
+    font-weight: 500;
+}
+.wa-contact-panel-row {
+    text-align: left;
+    padding: 14px 0;
+    border-top: 1px solid #f0f2f5;
+}
+.wa-contact-panel-label {
+    font-size: 11px;
+    color: #667781;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+}
+.wa-contact-panel-value {
+    font-size: 14px;
+}
+.wa-chat-header {
+    cursor: pointer;
+}
+
+@media (max-width: 768px) {
+    .wa-contact-panel {
+        width: 100%;
+    }
+    .wa-msg-actions-btn {
+        display: flex;
+    }
+    .wa-carousel-arrow {
+        display: none;
+    }
+}
+
+/* Compact component treatment used by the page mockup */
+.wa-reply-bar-inner {
+    min-height: 36px;
+    padding: 5px 8px;
+    border-radius: 5px;
+}
+.wa-reply-bar-text {
+    font-size: 10px;
+}
+.wa-reply-quote {
+    padding: 4px 6px;
+    margin: -1px -2px 5px;
+    font-size: 10px;
+}
+.wa-reply-quote-sender,
+.wa-reply-bar-sender {
+    font-size: 10px;
+}
+.wa-reaction-pill {
+    padding: 1px 6px;
+    font-size: 10px;
+}
+.wa-audio-player {
+    width: 190px;
+}
+.wa-audio-play {
+    width: 27px;
+    height: 27px;
+}
+.wa-carousel-bubble {
+    width: min(100%, 720px);
+    padding: 8px !important;
+    border-radius: 9px !important;
+}
+.wa-carousel-intro {
+    margin-bottom: 7px;
+    font-size: 12px;
+}
+.wa-carousel-strip {
+    gap: 7px;
+}
+.wa-carousel-card {
+    flex-basis: 152px;
+    border-radius: 7px;
+}
+.wa-carousel-img {
+    height: 96px;
+}
+.wa-carousel-img.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b2b1f;
+    font-size: 10px;
+}
+.wa-carousel-img.tone-1 { background: #f8e7e2; }
+.wa-carousel-img.tone-2 { background: #dff2eb; color: #075e54; }
+.wa-carousel-img.tone-3 { background: #e1eef9; color: #174c7c; }
+.wa-carousel-img.tone-4 { background: #f9efd9; color: #7b4d0c; }
+.wa-carousel-body {
+    min-height: 50px;
+    padding: 7px 9px 5px;
+}
+.wa-carousel-name {
+    font-size: 11px;
+}
+.wa-carousel-price,
+.wa-carousel-btn {
+    font-size: 10px;
+}
+.wa-carousel-btn {
+    padding: 6px 3px;
+}
+.wa-carousel-count {
+    margin-top: 5px;
+    font-size: 9px;
+}
+.wa-carousel-arrow {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.wa-carousel-wrap:hover .wa-carousel-arrow,
+.wa-carousel-arrow:focus-visible {
+    opacity: 1;
+}

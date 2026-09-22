@@ -1,5 +1,95 @@
 import frappe
 
+
+CHAT_ROLES = ("CRM", "System Manager")
+
+
+def _ensure_chat_access():
+    """Keep permission-bypassing chat queries limited to page users."""
+    frappe.only_for(CHAT_ROLES)
+
+
+@frappe.whitelist()
+def get_conversations():
+    """Return message rows used to build the conversation sidebar."""
+    _ensure_chat_access()
+    return frappe.get_all(
+        "Whatsapp Message",
+        fields=[
+            "name",
+            "customer",
+            "customer.customer_name as customer_name",
+            "custom_user",
+            "custom_user.first_name as user_first_name",
+            "from_number",
+            "message",
+            "message_type",
+            "custom_document",
+            "custom_template_type",
+            "creation",
+            "custom_status",
+            "custom_read",
+            "message_status",
+        ],
+        order_by="creation desc",
+        limit_page_length=0,
+    )
+
+
+@frappe.whitelist()
+def get_chat_history(contact):
+    """Return the complete message history for one sidebar contact."""
+    _ensure_chat_access()
+    contact = str(contact or "").strip()
+    if not contact:
+        return []
+
+    return frappe.get_all(
+        "Whatsapp Message",
+        fields=[
+            "name",
+            "message",
+            "from_number",
+            "creation",
+            "custom_status",
+            "custom_document",
+            "custom_read",
+            "message_id",
+            "message_type",
+            "timestamp",
+            "message_status",
+            "customer",
+            "custom_reaction",
+            "custom_reaction_from",
+            "custom_reactions",
+            "custom_reply_to_name",
+            "custom_reply_to_sender",
+            "custom_reply_to_text",
+            "custom_template_type",
+            "custom_template_data",
+        ],
+        filters={"from_number": contact},
+        order_by="creation asc",
+        limit_page_length=0,
+    )
+
+
+@frappe.whitelist()
+def get_chat_statuses(contact):
+    """Return recent delivery states for the open conversation."""
+    _ensure_chat_access()
+    contact = str(contact or "").strip()
+    if not contact:
+        return []
+
+    return frappe.get_all(
+        "Whatsapp Message",
+        fields=["name", "message_id", "message_status", "custom_status", "timestamp"],
+        filters={"from_number": contact},
+        order_by="creation desc",
+        limit_page_length=100,
+    )
+
 @frappe.whitelist()
 def get_unread_messages(limit=5):
     """Return last unread WhatsApp messages with link to live chat"""
@@ -35,6 +125,7 @@ def mark_message_read(message_name):
 @frappe.whitelist()
 def mark_all_read_by_number(from_number):
     """Mark all unread messages from a number as read"""
+    _ensure_chat_access()
     frappe.db.sql("""
         UPDATE `tabWhatsapp Message`
         SET custom_read = 1
@@ -77,6 +168,7 @@ def get_recipient_name_map():
     Return phone -> contact_name map from Customer Receipients child table.
     Uses get_all to avoid client-side permission issues on child doctype.
     """
+    _ensure_chat_access()
     rows = frappe.get_all(
         "Customer Receipients",
         fields=["contact_name", "phone_number", "parent"],
