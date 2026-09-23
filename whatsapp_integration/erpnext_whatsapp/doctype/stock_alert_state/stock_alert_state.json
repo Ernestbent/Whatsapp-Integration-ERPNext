@@ -1,0 +1,116 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:state_key",
+ "creation": "2026-09-22 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "state_key",
+  "settings_name",
+  "item_code",
+  "warehouse",
+  "column_break_details",
+  "whatsapp_number",
+  "active",
+  "alert_status",
+  "recovery_stock_qty",
+  "last_notified_on"
+ ],
+ "fields": [
+  {
+   "fieldname": "state_key",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "State Key",
+   "read_only": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "settings_name",
+   "fieldtype": "Data",
+   "label": "Settings",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Code",
+   "options": "Item",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Warehouse",
+   "options": "Warehouse",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_details",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "whatsapp_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "WhatsApp Number",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Active Alert",
+   "read_only": 1
+  },
+  {
+   "fieldname": "alert_status",
+   "fieldtype": "Data",
+   "label": "Alert Status",
+   "read_only": 1
+  },
+  {
+   "fieldname": "recovery_stock_qty",
+   "fieldtype": "Float",
+   "label": "Recovery Stock Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_notified_on",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Last Notified On",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-09-22 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "ERPNext Whatsapp",
+ "name": "Stock Alert State",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "last_notified_on",
+ "sort_order": "DESC",
+ "states": []
+}

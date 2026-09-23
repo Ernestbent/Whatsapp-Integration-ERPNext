@@ -211,6 +211,54 @@ function inject_responsive_styles() {
                 background: #f0fdf4 !important;
             }
 
+            .whatsapp-message-preview {
+                display: flex;
+                align-items: center;
+                min-width: 0;
+                flex: 1;
+            }
+
+            .whatsapp-message-type-icon {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 27px;
+                height: 27px;
+                margin-right: 8px;
+                border-radius: 50%;
+                flex: 0 0 27px;
+                background: #e7f7f2;
+                color: #008069;
+                font-size: 13px;
+            }
+
+            .whatsapp-message-type-icon.wa-notification-video {
+                background: #e9f2ff;
+                color: #1769aa;
+            }
+
+            .whatsapp-message-type-icon.wa-notification-audio {
+                background: #f1ebff;
+                color: #6f42c1;
+            }
+
+            .whatsapp-message-type-icon.wa-notification-document {
+                background: #fff1e5;
+                color: #b45309;
+            }
+
+            .whatsapp-message-type-icon.wa-notification-location {
+                background: #ffe9e9;
+                color: #c0392b;
+            }
+
+            .whatsapp-message-text-preview {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                min-width: 0;
+            }
+
             .whatsapp-icon-wrap {
                 --whatsapp-icon-size: 22px;
                 display: inline-flex;
@@ -586,7 +634,22 @@ function update_whatsapp_notifications() {
                 custom_read: 0,
                 message_status: "received"
             },
-            fields: ["name", "from_number", "customer", "customer.customer_name as customer_name", "custom_user", "custom_user.first_name as user_first_name", "message", "creation", "timestamp", "custom_status", "message_status"],
+            fields: [
+                "name",
+                "from_number",
+                "customer",
+                "customer.customer_name as customer_name",
+                "custom_user",
+                "custom_user.first_name as user_first_name",
+                "message",
+                "message_type",
+                "custom_document",
+                "media_id",
+                "creation",
+                "timestamp",
+                "custom_status",
+                "message_status"
+            ],
             order_by: "creation desc",
             limit_page_length: 100
         },
@@ -604,6 +667,173 @@ function update_whatsapp_notifications() {
                 </div>
             `);
         }
+    });
+}
+
+function get_whatsapp_notification_type(message = {}) {
+    let type = String(message.whatsapp_type || message.message_type || "text").toLowerCase();
+    const file_url = String(message.file_url || message.custom_document || "");
+    const clean_file_url = file_url.split("?")[0];
+    const filename = clean_file_url.split("/").pop() || "";
+    const extension = filename.includes(".") ? filename.split(".").pop().toLowerCase() : "";
+
+    if (type.startsWith("image/")) type = "image";
+    if (type.startsWith("video/")) type = "video";
+    if (type.startsWith("audio/")) type = "audio";
+
+    if (["jpg", "jpeg", "png", "gif", "webp"].includes(extension) && type !== "sticker") {
+        type = "image";
+    } else if (["mp4", "mov", "avi", "mkv", "webm"].includes(extension)) {
+        type = "video";
+    } else if (["mp3", "ogg", "wav", "m4a", "aac", "opus"].includes(extension)) {
+        type = "audio";
+    }
+
+    const types = {
+        image: {
+            type: "image",
+            label: "Photo",
+            icon: "fa-camera",
+            emoji: "📷",
+            css_class: "wa-notification-image"
+        },
+        video: {
+            type: "video",
+            label: "Video",
+            icon: "fa-video-camera",
+            emoji: "🎥",
+            css_class: "wa-notification-video"
+        },
+        audio: {
+            type: "audio",
+            label: "Audio",
+            icon: "fa-microphone",
+            emoji: "🎤",
+            css_class: "wa-notification-audio"
+        },
+        document: {
+            type: "document",
+            label: "Document",
+            icon: "fa-file-text-o",
+            emoji: "📄",
+            css_class: "wa-notification-document"
+        },
+        sticker: {
+            type: "sticker",
+            label: "Sticker",
+            icon: "fa-smile-o",
+            emoji: "🙂",
+            css_class: "wa-notification-sticker"
+        },
+        location: {
+            type: "location",
+            label: "Location",
+            icon: "fa-map-marker",
+            emoji: "📍",
+            css_class: "wa-notification-location"
+        },
+        contacts: {
+            type: "contacts",
+            label: "Contact",
+            icon: "fa-user",
+            emoji: "👤",
+            css_class: "wa-notification-contact"
+        },
+        button: {
+            type: "button",
+            label: "Button reply",
+            icon: "fa-hand-pointer-o",
+            emoji: "👆",
+            css_class: "wa-notification-button"
+        }
+    };
+
+    if (types[type]) return types[type];
+    if (file_url) return types.document;
+
+    return {
+        type: "text",
+        label: "Message",
+        icon: "fa-comment-o",
+        emoji: "💬",
+        css_class: "wa-notification-text"
+    };
+}
+
+function get_whatsapp_notification_preview(message, type_info) {
+    const text = String(message.message_text || message.message || "").trim();
+    const generic_media_text = new Set([
+        "image received",
+        "video received",
+        "audio received",
+        "sticker received",
+        "location received",
+        "contact received"
+    ]);
+
+    if (!text || generic_media_text.has(text.toLowerCase())) return type_info.label;
+    return text;
+}
+
+function whatsapp_notification_type_icon(type_info) {
+    if (!type_info || type_info.type === "text") return "";
+    const safe_label = frappe.utils.escape_html(type_info.label);
+    return `
+        <span class="whatsapp-message-type-icon ${type_info.css_class}"
+              title="${safe_label}" aria-label="${safe_label}">
+            <i class="fa ${type_info.icon}" aria-hidden="true"></i>
+        </span>
+    `;
+}
+
+function show_whatsapp_incoming_banner(data = {}) {
+    if (typeof frappe.show_alert !== "function") return;
+
+    const type_info = get_whatsapp_notification_type(data);
+    const sender = data.customer || format_phone_display(data.contact_number);
+    const preview = get_whatsapp_notification_preview(data, type_info);
+    const short_preview = preview.length > 55 ? `${preview.substring(0, 55)}...` : preview;
+    const safe_sender = frappe.utils.escape_html(String(sender || "Unknown"));
+    const safe_preview = frappe.utils.escape_html(short_preview);
+    const media_preview = preview === type_info.label ? "" : `: ${safe_preview}`;
+    const banner_message = type_info.type === "text"
+        ? `${type_info.emoji} New WhatsApp message from ${safe_sender}: ${safe_preview}`
+        : `${type_info.emoji} New WhatsApp ${type_info.label.toLowerCase()} from ${safe_sender}${media_preview}`;
+
+    frappe.show_alert({ message: banner_message, indicator: "green" }, 5);
+}
+
+function register_whatsapp_notification_realtime() {
+    if (window.whatsapp_notification_realtime_registered) return;
+
+    const roles_ready = typeof frappe !== "undefined" && Array.isArray(frappe.user_roles);
+    const realtime_ready = roles_ready && frappe.realtime;
+    if (!roles_ready || !realtime_ready) {
+        window.whatsapp_notification_realtime_attempts =
+            (window.whatsapp_notification_realtime_attempts || 0) + 1;
+        if (window.whatsapp_notification_realtime_attempts < 10) {
+            setTimeout(register_whatsapp_notification_realtime, 1000);
+        }
+        return;
+    }
+
+    // The webhook event is broadcast site-wide. Keep message details limited to
+    // the same role that is allowed to see the WhatsApp navbar notification.
+    if (!frappe.user_roles.includes("Whatsapp User")) return;
+
+    window.whatsapp_notification_realtime_registered = true;
+    frappe.realtime.on("whatsapp_new_message", data => {
+        if (
+            !frappe.user_roles.includes("Whatsapp User") ||
+            !data ||
+            data.message_type !== "incoming"
+        ) {
+            return;
+        }
+
+        add_whatsapp_icon();
+        show_whatsapp_incoming_banner(data);
+        setTimeout(update_whatsapp_notifications, 150);
     });
 }
 
@@ -743,7 +973,9 @@ function render_whatsapp_messages(messages) {
     sorted.forEach(group => {
         const d = group.data;
         const latest = d.messages.sort((a, b) => new Date(b.creation) - new Date(a.creation))[0];
-        const text = (latest.message || "").substring(0, 70) + ((latest.message || "").length > 70 ? "..." : "");
+        const type_info = get_whatsapp_notification_type(latest);
+        const preview = get_whatsapp_notification_preview(latest, type_info);
+        const text = preview.substring(0, 70) + (preview.length > 70 ? "..." : "");
         const time = frappe.datetime.comment_when(d.latest_time);
         const unread_count = d.messages.length;
 
@@ -755,7 +987,10 @@ function render_whatsapp_messages(messages) {
                 <small class="text-muted" style="font-size:11px;">${time}</small>
             </div>
             <div class="d-flex align-items-center justify-content-between">
-                <div class="text-muted small" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${frappe.utils.escape_html(text)}</div>
+                <div class="whatsapp-message-preview text-muted small">
+                    ${whatsapp_notification_type_icon(type_info)}
+                    <div class="whatsapp-message-text-preview">${frappe.utils.escape_html(text)}</div>
+                </div>
                 <span style="background:#25D366; color:white; border-radius:12px; padding:2px 7px; font-size:12px; font-weight:600; min-width:20px; text-align:center; margin-left:8px; flex-shrink:0;">${unread_count}</span>
             </div>
         </a>`;
@@ -816,3 +1051,6 @@ $(document).on('keydown', function(e) {
         close_whatsapp_dropdown();
     }
 });
+
+$(document).ready(register_whatsapp_notification_realtime);
+setTimeout(register_whatsapp_notification_realtime, 500);

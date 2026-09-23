@@ -30,7 +30,7 @@ app_include_css = [
     "/assets/whatsapp_integration/css/wa_components.css?v=20260922.12"
 ]
 app_include_js = [
-    "/assets/whatsapp_integration/js/whatsapp_notification.js",
+    "/assets/whatsapp_integration/js/whatsapp_notification.js?v=20260922.13",
     "/assets/whatsapp_integration/js/whatsapp/wa_utils.js?v=20260922.12",
     "/assets/whatsapp_integration/js/whatsapp/wa_ticks.js?v=20260922.12",
     "/assets/whatsapp_integration/js/whatsapp/wa_audio.js?v=20260922.12",
@@ -226,6 +226,9 @@ doc_events = {
 # Scheduled Tasks
 scheduler_events = {
     "cron": {
+        "0 * * * *": [
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.stock_alerts.run_stock_alert_notifications",
+        ],
         "0 11 * * *": [
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_salesperson_outstanding_reports.run_scheduled_salesperson_outstanding_reports",
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_manager_outstanding_reports.run_scheduled_manager_outstanding_reports",
