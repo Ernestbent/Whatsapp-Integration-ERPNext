@@ -1,0 +1,126 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "{#####}",
+ "creation": "2026-09-22 16:59:50.410352",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enable_stock_alerts",
+  "analysis_period",
+  "top_selling_items",
+  "daily_average_threshold",
+  "column_break_fetf",
+  "stock_days_threshold",
+  "critical_stock_days",
+  "section_break_lzbe",
+  "warehouse",
+  "whatsapp_template",
+  "send_time",
+  "include_zero_stock",
+  "section_break_bpfk",
+  "reciepients"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "enable_stock_alerts",
+   "fieldtype": "Check",
+   "label": "Enable Stock Alerts"
+  },
+  {
+   "fieldname": "analysis_period",
+   "fieldtype": "Int",
+   "label": "Analysis Period"
+  },
+  {
+   "fieldname": "top_selling_items",
+   "fieldtype": "Int",
+   "label": "Top Selling Items"
+  },
+  {
+   "fieldname": "daily_average_threshold",
+   "fieldtype": "Float",
+   "label": "Daily Average Threshold"
+  },
+  {
+   "fieldname": "column_break_fetf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "stock_days_threshold",
+   "fieldtype": "Float",
+   "label": "Stock Days Threshold"
+  },
+  {
+   "fieldname": "critical_stock_days",
+   "fieldtype": "Float",
+   "label": "Critical Stock Days"
+  },
+  {
+   "fieldname": "section_break_lzbe",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "whatsapp_template",
+   "fieldtype": "Link",
+   "label": "WhatsApp Template",
+   "options": "Whatsapp Message Template"
+  },
+  {
+   "fieldname": "send_time",
+   "fieldtype": "Time",
+   "label": "Send Time"
+  },
+  {
+   "default": "0",
+   "fieldname": "include_zero_stock",
+   "fieldtype": "Check",
+   "label": "Include Zero Stock"
+  },
+  {
+   "fieldname": "section_break_bpfk",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "reciepients",
+   "fieldtype": "Table",
+   "label": "Reciepients",
+   "options": "Stock Alert Recipients"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-23 09:11:13.760808",
+ "modified_by": "ernestben69@gmail.com",
+ "module": "ERPNext Whatsapp",
+ "name": "Stock Alert Settings",
+ "naming_rule": "Expression",
+ "owner": "ernestben69@gmail.com",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
