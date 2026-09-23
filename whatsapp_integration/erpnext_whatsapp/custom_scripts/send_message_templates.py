@@ -5,6 +5,11 @@ import re
 import os
 from frappe import _
 
+from whatsapp_integration.erpnext_whatsapp.phone_utils import (
+    is_supported_whatsapp_number,
+    normalize_whatsapp_number,
+)
+
 
 def upload_whatsapp_template_media(document_url):
     """Upload template header media once and return its WhatsApp media details."""
@@ -85,20 +90,11 @@ def send_whatsapp_template_message(
     if template.status != "Approved":
         frappe.throw(f"Template '{template_name}' is not approved yet. Status: {template.status}")
     
-    # Clean phone number and format properly
-    phone = phone.strip().replace(" ", "").replace("-", "")
-    
-    # Remove leading + if present
-    if phone.startswith("+"):
-        phone = phone[1:]
-    
-    # Remove leading 0 if present (e.g., 0726773735 -> 726773735)
-    if phone.startswith("0"):
-        phone = phone[1:]
-    
-    # Add country code if not present (assume Uganda 256)
-    if not phone.startswith("256"):
-        phone = "256" + phone
+    phone = normalize_whatsapp_number(phone)
+    if not is_supported_whatsapp_number(phone):
+        frappe.throw(
+            "Invalid WhatsApp number. Use a Uganda (+256) or India (+91) number."
+        )
     
     # Build components array
     components = []
@@ -294,11 +290,11 @@ def send_whatsapp_carousel_template_message(phone, template_name, cards, custome
     if (template.status or "").lower() != "approved":
         frappe.throw(f"Template '{template_name}' is not approved yet. Status: {template.status}")
 
-    phone = re.sub(r"\D", "", str(phone or ""))
-    if phone.startswith("0"):
-        phone = phone[1:]
-    if phone and not phone.startswith("256"):
-        phone = "256" + phone
+    phone = normalize_whatsapp_number(phone)
+    if not is_supported_whatsapp_number(phone):
+        frappe.throw(
+            "Invalid WhatsApp number. Use a Uganda (+256) or India (+91) number."
+        )
 
     template_code = re.sub(r"[^a-z0-9_]", "_", template.template_name.lower().replace(" ", "_"))
     payload = {

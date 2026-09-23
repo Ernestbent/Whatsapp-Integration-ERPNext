@@ -350,13 +350,19 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
 
     function normalizePhone(phone) {
         let normalized = (phone || '').toString().replace(/\D/g, '');
-        if (normalized.startsWith('0')) normalized = normalized.slice(1);
-        if (normalized && !normalized.startsWith('256')) normalized = `256${normalized}`;
+        if (normalized.startsWith('00')) normalized = normalized.slice(2);
+
+        // Preserve supported international numbers instead of treating every
+        // non-256 number as a Ugandan local number.
+        if (/^(256\d{9}|91\d{10})$/.test(normalized)) return normalized;
+
+        if (/^0\d{9}$/.test(normalized)) normalized = `256${normalized.slice(1)}`;
+        else if (/^\d{9}$/.test(normalized)) normalized = `256${normalized}`;
         return normalized;
     }
 
     function hasUsableWhatsAppNumber(phone) {
-        return /^256\d{9}$/.test(normalizePhone(phone));
+        return /^(256\d{9}|91\d{10})$/.test(normalizePhone(phone));
     }
 
     function normalizeFilterValue(value) {

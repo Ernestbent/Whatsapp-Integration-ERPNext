@@ -13,6 +13,10 @@ from whatsapp_integration.erpnext_whatsapp.custom_scripts.send_message_templates
 	send_whatsapp_template_message,
 	upload_whatsapp_template_media,
 )
+from whatsapp_integration.erpnext_whatsapp.phone_utils import (
+	is_supported_whatsapp_number,
+	normalize_whatsapp_number,
+)
 
 
 CAROUSEL_TEMPLATE_NAME = "product_carousel"
@@ -100,16 +104,11 @@ def _get_template_parameters(body_text, doc, row, customer):
 
 
 def _normalize_phone(phone):
-	phone = re.sub(r"\D", "", phone or "")
-	if phone.startswith("0"):
-		phone = phone[1:]
-	if phone and not phone.startswith("256"):
-		phone = "256" + phone
-	return phone
+	return normalize_whatsapp_number(phone)
 
 
 def _is_valid_phone(phone):
-	return phone.startswith("256") and len(phone) == 12
+	return is_supported_whatsapp_number(phone)
 
 
 def _format_carousel_price(rate):
