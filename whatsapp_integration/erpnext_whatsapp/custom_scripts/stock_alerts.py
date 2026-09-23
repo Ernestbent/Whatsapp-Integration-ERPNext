@@ -2,12 +2,15 @@ import hashlib
 import re
 from contextlib import suppress
 from datetime import timedelta
+from html import escape
 
 import frappe
-from frappe.utils import add_days, cint, flt, now_datetime, today
+from frappe.utils import add_days, cint, flt, formatdate, now_datetime, today
+from frappe.utils.pdf import get_pdf
 
 from whatsapp_integration.erpnext_whatsapp.custom_scripts.send_message_templates import (
 	send_whatsapp_template_message,
+	upload_whatsapp_template_media,
 )
 
 
@@ -173,17 +176,80 @@ def _normalize_phone(phone):
 	return digits
 
 
-def _get_recipient_numbers(settings):
+def _get_recipients(settings):
 	# The existing custom field is misspelled as `reciepients`; also accept the
 	# corrected spelling so the code keeps working after that field is cleaned up.
 	rows = settings.get("reciepients") or settings.get("recipients") or []
-	return sorted(
-		{
-			phone
-			for row in rows
-			if (phone := _normalize_phone(row.get("whatsapp_number")))
-		}
-	)
+	recipients = []
+	seen_numbers = set()
+	for row in rows:
+		phone = _normalize_phone(row.get("whatsapp_number"))
+		if not phone or phone in seen_numbers:
+			continue
+		seen_numbers.add(phone)
+		recipients.append({
+			"phone": phone,
+			"recipient_name": str(row.get("person") or "Manager").strip() or "Manager",
+		})
+	return sorted(recipients, key=lambda row: row["phone"])
+
+
+def _get_recipient_numbers(settings):
+	return [recipient["phone"] for recipient in _get_recipients(settings)]
+
+
+def _render_stock_alert_report(settings, alerts, recipient_name):
+	rows = []
+	for alert in alerts:
+		rows.append(
+			"<tr>"
+			f"<td>{escape(str(alert['item_code']))}</td>"
+			f"<td>{escape(str(alert['item_name']))}</td>"
+			f"<td>{escape(str(alert['status']))}</td>"
+			f"<td>{flt(alert['current_stock']):,.2f}</td>"
+			f"<td>{flt(alert.get('daily_average')):,.2f}</td>"
+			f"<td>{flt(alert.get('days_remaining')):,.2f}</td>"
+			"</tr>"
+		)
+
+	return f"""
+	<html>
+	<head>
+		<style>
+			body {{ font-family: Arial, sans-serif; color: #1f2933; font-size: 10px; }}
+			h2 {{ margin-bottom: 4px; color: #075e54; }}
+			.meta {{ margin: 0 0 14px; color: #667781; }}
+			table {{ width: 100%; border-collapse: collapse; }}
+			th {{ background: #075e54; color: white; text-align: left; }}
+			th, td {{ padding: 7px; border: 1px solid #d9dee1; }}
+			tr:nth-child(even) {{ background: #f5f7f7; }}
+		</style>
+	</head>
+	<body>
+		<h2>Stock Alert Report</h2>
+		<p class="meta">For {escape(recipient_name)} · {escape(formatdate(today()))} · {escape(str(settings.warehouse or 'All warehouses'))}</p>
+		<table>
+			<thead><tr><th>Item Code</th><th>Item</th><th>Status</th><th>Current Stock</th><th>Avg. Daily Sales</th><th>Days Remaining</th></tr></thead>
+			<tbody>{''.join(rows)}</tbody>
+		</table>
+	</body>
+	</html>
+	"""
+
+
+def _create_stock_alert_report(settings, alerts, recipient_name, phone):
+	pdf_content = get_pdf(_render_stock_alert_report(settings, alerts, recipient_name))
+	file_doc = frappe.get_doc({
+		"doctype": "File",
+		"file_name": f"Stock_Alert_{today()}_{phone[-4:]}.pdf",
+		"folder": "Home/Attachments",
+		"is_private": 1,
+		"content": pdf_content,
+		"attached_to_doctype": SETTINGS_DOCTYPE,
+		"attached_to_name": settings.name,
+	})
+	file_doc.insert(ignore_permissions=True)
+	return file_doc
 
 
 def _state_key(settings_name, warehouse, item_code, phone):
@@ -298,7 +364,7 @@ def _send_time_is_due(send_time, current_time=None):
 
 
 def _send_pending_alerts(settings, alerts):
-	recipients = _get_recipient_numbers(settings)
+	recipients = _get_recipients(settings)
 	if not recipients:
 		frappe.log_error(
 			f"No WhatsApp recipients are configured in {SETTINGS_DOCTYPE} {settings.name}.",
@@ -322,14 +388,56 @@ def _send_pending_alerts(settings, alerts):
 	sent = 0
 	skipped = 0
 	failed = []
-	for alert in alerts:
-		for phone in recipients:
-			# The approved `stock_alert` template explicitly says the item is out
-			# of stock. Do not use it for LOW/CRITICAL items that still have stock.
-			if template_name == "stock_alert" and flt(alert["current_stock"]) > 0:
-				skipped += 1
+	if template_name == "stock_alert":
+		for recipient in recipients:
+			phone = recipient["phone"]
+			pending_alerts = []
+			for alert in alerts:
+				if _notification_is_active(settings, alert, phone):
+					skipped += 1
+				else:
+					pending_alerts.append(alert)
+
+			if not pending_alerts:
 				continue
 
+			try:
+				report_file = _create_stock_alert_report(
+					settings,
+					pending_alerts,
+					recipient["recipient_name"],
+					phone,
+				)
+				media = upload_whatsapp_template_media(report_file.file_url)
+				result = send_whatsapp_template_message(
+					phone=phone,
+					template_name=template_name,
+					parameters={"recipient_name": recipient["recipient_name"]},
+					document_url=report_file.file_url,
+					media_id=media["id"],
+					media_filename=media["filename"],
+				)
+			except Exception:
+				result = {"success": False, "error": frappe.get_traceback()}
+
+			if result.get("success"):
+				for alert in pending_alerts:
+					_mark_notification_sent(settings, alert, phone)
+				sent += 1
+			else:
+				error = result.get("error") or "Unknown WhatsApp send error"
+				failed.append({"item_code": "Stock alert report", "phone": phone, "error": error})
+
+		if failed:
+			frappe.log_error(
+				"\n".join(f"{row['phone']}: {row['error']}" for row in failed),
+				"Stock Alert WhatsApp Send",
+			)
+		return {"sent": sent, "skipped": skipped, "failed": failed}
+
+	for alert in alerts:
+		for recipient in recipients:
+			phone = recipient["phone"]
 			if _notification_is_active(settings, alert, phone):
 				skipped += 1
 				continue

@@ -101,12 +101,15 @@ class TestStockAlertState(TestCase):
 			update_modified=False,
 		)
 
-	def test_out_of_stock_template_is_not_used_for_low_stock(self):
+	def test_stock_alert_template_sends_document_report_for_low_stock(self):
 		settings = frappe._dict(
 			{
 				"name": "SETTINGS-1",
+				"warehouse": "Main Loc - APL",
 				"whatsapp_template": "stock_alert",
-				"reciepients": [frappe._dict(whatsapp_number="0757001909")],
+				"reciepients": [
+					frappe._dict(person="Stock Manager", whatsapp_number="0757001909")
+				],
 			}
 		)
 		alerts = [
@@ -116,6 +119,8 @@ class TestStockAlertState(TestCase):
 				"warehouse": "Main Loc - APL",
 				"status": "LOW",
 				"current_stock": 10,
+				"daily_average": 5,
+				"days_remaining": 2,
 				"recovery_stock_qty": 70,
 			}
 		]
@@ -124,12 +129,36 @@ class TestStockAlertState(TestCase):
 
 		with (
 			patch.object(stock_alerts.frappe, "db", database),
-			patch.object(stock_alerts, "send_whatsapp_template_message") as send,
+			patch.object(stock_alerts, "_notification_is_active", return_value=False),
+			patch.object(stock_alerts, "_mark_notification_sent") as mark_sent,
+			patch.object(
+				stock_alerts,
+				"_create_stock_alert_report",
+				return_value=frappe._dict(file_url="/private/files/stock-alert.pdf"),
+			),
+			patch.object(
+				stock_alerts,
+				"upload_whatsapp_template_media",
+				return_value={"id": "media-1", "filename": "stock-alert.pdf"},
+			),
+			patch.object(
+				stock_alerts,
+				"send_whatsapp_template_message",
+				return_value={"success": True},
+			) as send,
 		):
 			result = stock_alerts._send_pending_alerts(settings, alerts)
 
-		send.assert_not_called()
-		self.assertEqual(result, {"sent": 0, "skipped": 1, "failed": []})
+		send.assert_called_once_with(
+			phone="256757001909",
+			template_name="stock_alert",
+			parameters={"recipient_name": "Stock Manager"},
+			document_url="/private/files/stock-alert.pdf",
+			media_id="media-1",
+			media_filename="stock-alert.pdf",
+		)
+		mark_sent.assert_called_once_with(settings, alerts[0], "256757001909")
+		self.assertEqual(result, {"sent": 1, "skipped": 0, "failed": []})
 
 	def test_phone_normalization_makes_state_key_stable(self):
 		local_key = stock_alerts._state_key(

@@ -5,21 +5,21 @@ TEMPLATES = (
 	{
 		"template_name": "stock_alert",
 		"id": "1064557409725509",
-		"category": "utility",
+		"category": "marketing",
 		"language": "en",
 		"status": "Approved",
 		"parameter_format": "named",
-		"format": "text",
+		"format": "documentation",
 		"body_text": (
-			"*Stock Alert*\n\n"
-			"The following item is now out of stock:\n\n"
-			"*Item:* {{item_name}}\n"
-			"*Item Code:* {{item_code}}\n\n"
-			"Please take note and plan accordingly."
+			"⚠️ *Stock Alert*\n\n"
+			"Hi {{recipient_name}},\n\n"
+			"Some of our top-selling items are currently out of stock or projected "
+			"to run low based on recent average daily sales.\n\n"
+			"Please see the attached stock alert report for details.\n\n"
+			"Thank you."
 		),
 		"body_parameters": (
-			("item_name", "Endurance=Rear Shocker Absorber=BM100KS"),
-			("item_code", "S130107701"),
+			("recipient_name", "manager"),
 		),
 	},
 	{
@@ -44,23 +44,26 @@ TEMPLATES = (
 )
 
 
+def upsert_template(values):
+	docname = frappe.db.exists(
+		"Whatsapp Message Template", {"template_name": values["template_name"]}
+	) or frappe.db.exists("Whatsapp Message Template", {"id": values["id"]})
+	doc = (
+		frappe.get_doc("Whatsapp Message Template", docname)
+		if docname
+		else frappe.new_doc("Whatsapp Message Template")
+	)
+	doc.update({key: value for key, value in values.items() if key != "body_parameters"})
+	doc.set("body_parameters", [])
+	for parameter_name, example_value in values["body_parameters"]:
+		doc.append("body_parameters", {
+			"parameter_name": parameter_name,
+			"example_value": example_value,
+		})
+	doc.save(ignore_permissions=True)
+
+
 def execute():
 	"""Register the approved Meta stock-alert templates in the local template DocType."""
 	for values in TEMPLATES:
-		if frappe.db.exists(
-			"Whatsapp Message Template", {"template_name": values["template_name"]}
-		):
-			continue
-		if frappe.db.exists("Whatsapp Message Template", {"id": values["id"]}):
-			continue
-
-		doc = frappe.get_doc({
-			"doctype": "Whatsapp Message Template",
-			**{key: value for key, value in values.items() if key != "body_parameters"},
-		})
-		for parameter_name, example_value in values["body_parameters"]:
-			doc.append("body_parameters", {
-				"parameter_name": parameter_name,
-				"example_value": example_value,
-			})
-		doc.insert(ignore_permissions=True)
+		upsert_template(values)
