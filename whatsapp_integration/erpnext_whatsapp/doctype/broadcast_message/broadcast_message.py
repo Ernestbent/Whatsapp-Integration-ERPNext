@@ -82,9 +82,9 @@ def _get_phone(row, customer):
 def _get_template_parameters(body_text, doc, row, customer):
 	parameter_names = [param.strip() for param in re.findall(r"\{\{([^}]+)\}\}", body_text)]
 
-	customer_name = customer.get("customer_name") or row.customer or ""
+	customer_name = customer.get("customer_name") or row.customer or _("Customer")
 	values = {
-		"customer": row.customer or "",
+		"customer": row.customer or customer_name,
 		"customer_name": customer_name,
 		"name": customer_name,
 		"phone": _get_phone(row, customer) or "",
@@ -288,15 +288,17 @@ def get_carousel_settings():
 def create_and_enqueue_broadcast(
 	campaign_name,
 	template_name,
-	customer_names,
+	customer_names=None,
+	phone_numbers=None,
 	document_url=None,
 	carousel_item_codes=None,
 	price_list=None,
 ):
 	frappe.has_permission("BroadCast Message", "create", throw=True)
 	customer_names = _parse_list(customer_names)
-	if not customer_names:
-		frappe.throw(_("Select at least one customer."))
+	phone_numbers = _parse_list(phone_numbers)
+	if not customer_names and not phone_numbers:
+		frappe.throw(_("Select at least one customer or enter a direct WhatsApp number."))
 
 	template = frappe.db.get_value(
 		"Whatsapp Message Template",
@@ -357,8 +359,27 @@ def create_and_enqueue_broadcast(
 		seen_phones.add(normalized_phone)
 		eligible.append(customer)
 
-	if not eligible:
+	manual_numbers = []
+	invalid_numbers = []
+	for phone_number in phone_numbers:
+		normalized_phone = _normalize_phone(phone_number)
+		if not _is_valid_phone(normalized_phone):
+			invalid_numbers.append(str(phone_number))
+			continue
+		if normalized_phone in seen_phones:
+			continue
+		seen_phones.add(normalized_phone)
+		manual_numbers.append(normalized_phone)
+
+	if invalid_numbers:
+		frappe.throw(
+			_("Invalid direct WhatsApp number(s): {0}").format(", ".join(invalid_numbers))
+		)
+
+	if not eligible and not manual_numbers:
 		frappe.throw(_("The selected group has no eligible WhatsApp recipients."))
+
+	recipient_count = len(eligible) + len(manual_numbers)
 
 	content_type = "Image" if is_carousel else {
 		"documentation": "Document",
@@ -376,20 +397,22 @@ def create_and_enqueue_broadcast(
 		"carousel_price_list": carousel_data["price_list"] if is_carousel else None,
 		"carousel_items": frappe.as_json(carousel_data["items"]) if is_carousel else None,
 		"name1": template.name,
-		"recipient_count": len(eligible),
+		"recipient_count": recipient_count,
 		"send_status": "Draft",
 	})
 	for customer in eligible:
 		doc.append("customers", {
 			"customer": customer.name,
-			"phone_number": customer.whatsapp_number,
+			"phone_number": _normalize_phone(customer.whatsapp_number),
 		})
+	for phone_number in manual_numbers:
+		doc.append("customers", {"phone_number": phone_number})
 	doc.insert()
 
 	result = enqueue_broadcast(doc.name)
 	result.update({
 		"docname": doc.name,
-		"recipient_count": len(eligible),
+		"recipient_count": recipient_count,
 		"excluded_count": len(customer_names) - len(eligible),
 	})
 	return result
@@ -409,7 +432,7 @@ def enqueue_broadcast(docname):
 	template = _get_template(doc)
 	recipients = [row for row in doc.customers if row.customer or row.phone_number]
 	if not recipients:
-		frappe.throw(_("Add at least one customer before sending."))
+		frappe.throw(_("Add at least one customer or direct WhatsApp number before sending."))
 
 	job_id = f"whatsapp-broadcast-{doc.name}"
 	from frappe.utils.background_jobs import is_job_enqueued
@@ -442,7 +465,7 @@ def enqueue_broadcast(docname):
 
 	return {
 		"success": True,
-		"message": _("Broadcast queued for {0} customer(s) using template {1}.").format(
+		"message": _("Broadcast queued for {0} recipient(s) using template {1}.").format(
 			len(recipients),
 			template.template_name,
 		),
@@ -481,15 +504,16 @@ def send_broadcast(docname):
 
 	for row in doc.customers:
 		customer = _get_customer_details(row)
-		if not customer:
-			skipped.append(f"{row.customer or row.idx} (customer not found)")
-			continue
-		if customer.get("disabled"):
-			skipped.append(f"{row.customer} (disabled)")
-			continue
-		if not customer.get("custom_opt_in"):
-			skipped.append(f"{row.customer} (not opted in)")
-			continue
+		if row.customer:
+			if not customer:
+				skipped.append(f"{row.customer} (customer not found)")
+				continue
+			if customer.get("disabled"):
+				skipped.append(f"{row.customer} (disabled)")
+				continue
+			if not customer.get("custom_opt_in"):
+				skipped.append(f"{row.customer} (not opted in)")
+				continue
 		phone = _get_phone(row, customer)
 
 		if not phone:
@@ -497,7 +521,7 @@ def send_broadcast(docname):
 			continue
 		normalized_phone = _normalize_phone(phone)
 		if not _is_valid_phone(normalized_phone):
-			skipped.append(f"{row.customer} (invalid WhatsApp number)")
+			skipped.append(f"{row.customer or phone} (invalid WhatsApp number)")
 			continue
 		if normalized_phone in seen_phones:
 			skipped.append(f"{row.customer or row.idx} (duplicate phone)")
@@ -530,7 +554,7 @@ def send_broadcast(docname):
 			sent += 1
 		else:
 			failed.append({
-				"customer": row.customer,
+				"customer": row.customer or _("Direct recipient"),
 				"phone": phone,
 				"error": result.get("error"),
 			})

@@ -50,6 +50,10 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
             .wb-chip strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
             .wb-chip small { display: block; color: var(--wb-muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
             .wb-chip .wb-customer-meta { margin-top: 2px; color: #7d8b92; font-family: "Inter", "Segoe UI", sans-serif; font-size: 10px; }
+            .wb-direct-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+            .wb-direct-number { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 5px 7px; border: 1px solid #b9ddd2; border-radius: 5px; background: #f1faf7; color: var(--wb-teal); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+            .wb-direct-number button { padding: 0; border: 0; background: transparent; color: #a12626; cursor: pointer; font-size: 15px; line-height: 1; }
+            .wb-direct-empty { color: var(--wb-muted); font-size: 11px; }
             .wb-audience-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 8px; }
             .wb-compose-grid { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(260px, .8fr); gap: 24px; }
             .wb-upload-row { display: flex; align-items: center; gap: 10px; }
@@ -155,6 +159,14 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
                         <button class="wb-btn wb-btn-secondary wb-icon-btn" id="wb-create-group" title="Create group" aria-label="Create group">+</button>
                         <button class="wb-btn wb-btn-danger wb-icon-btn" id="wb-delete-group" title="Delete selected group" aria-label="Delete selected group">&times;</button>
                     </div>
+                    <div class="wb-field" style="margin-top: 15px;">
+                        <label for="wb-direct-number">Direct WhatsApp number</label>
+                        <div class="wb-inline">
+                            <input class="wb-input" id="wb-direct-number" placeholder="+256… or +91…" autocomplete="off" />
+                            <button class="wb-btn wb-btn-secondary" id="wb-add-direct-number" type="button">Add</button>
+                        </div>
+                        <div class="wb-direct-list" id="wb-direct-numbers"></div>
+                    </div>
                     <div class="wb-field">
                         <label for="wb-customer-search">Find customer</label>
                         <input class="wb-input" id="wb-customer-search" placeholder="Name or WhatsApp number" />
@@ -202,7 +214,7 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
                                 </div>
                             </div>
                             <div class="wb-send-row">
-                                <button class="wb-btn wb-btn-send" id="wb-send">Send to 0 customers</button>
+                                <button class="wb-btn wb-btn-send" id="wb-send">Send to 0 recipients</button>
                                 <button class="wb-btn wb-btn-secondary" id="wb-open-chat">Open chats</button>
                             </div>
                             <div class="wb-send-note">Queued as background jobs and sent gradually.</div>
@@ -427,11 +439,31 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
         const recipientPhones = new Set(customers
             .filter(row => memberNames.has(row.name) && hasUsableWhatsAppNumber(row.whatsapp_number))
             .map(row => normalizePhone(row.whatsapp_number)));
+        ((selectedGroup && selectedGroup.numbers) || [])
+            .map(normalizePhone)
+            .filter(hasUsableWhatsAppNumber)
+            .forEach(phone => recipientPhones.add(phone));
         const recipientCount = recipientPhones.size;
         const checkedCount = $('.wb-customer:checked').length;
         $('#wb-match-count').text(getFilteredCustomers().length);
         $('#wb-selected-count').text(`${checkedCount} selected`);
-        $('#wb-send').text(`Send to ${recipientCount} customer${recipientCount === 1 ? '' : 's'}`);
+        $('#wb-send').text(`Send to ${recipientCount} recipient${recipientCount === 1 ? '' : 's'}`);
+    }
+
+    function renderDirectNumbers() {
+        const selectedGroup = getSelectedGroup();
+        const numbers = (selectedGroup && selectedGroup.numbers) || [];
+        const $list = $('#wb-direct-numbers');
+        if (!numbers.length) {
+            $list.html('<span class="wb-direct-empty">No direct numbers in this audience.</span>');
+            return;
+        }
+        $list.html(numbers.map((phone, index) => `
+            <span class="wb-direct-number">
+                +${frappe.utils.escape_html(normalizePhone(phone))}
+                <button type="button" class="wb-remove-direct-number" data-index="${index}" title="Remove number" aria-label="Remove number">&times;</button>
+            </span>
+        `).join(''));
     }
 
     function renderGroupOptions() {
@@ -441,8 +473,12 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
             return;
         }
         const selected = $group.val();
-        $group.html(groups.map(g => `<option value="${frappe.utils.escape_html(g.id)}">${frappe.utils.escape_html(g.name)} (${(g.members || []).length})</option>`).join(''));
+        $group.html(groups.map(g => {
+            const audienceSize = (g.members || []).length + (g.numbers || []).length;
+            return `<option value="${frappe.utils.escape_html(g.id)}">${frappe.utils.escape_html(g.name)} (${audienceSize})</option>`;
+        }).join(''));
         if (selected && groups.some(g => g.id === selected)) $group.val(selected); else $group.val(groups[0].id);
+        renderDirectNumbers();
         updateAudienceSummary();
     }
 
@@ -651,15 +687,22 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
 
     function bootstrapGroups() {
         groups = safeParse(GROUPS_KEY, []);
+        groups = (Array.isArray(groups) ? groups : []).map(group => ({
+            ...group,
+            members: Array.isArray(group.members) ? group.members : [],
+            numbers: Array.isArray(group.numbers)
+                ? [...new Set(group.numbers.map(normalizePhone).filter(hasUsableWhatsAppNumber))]
+                : []
+        }));
         if (!groups.length) {
             const ts = Date.now();
             groups = [
-                { id: `grp-${ts}-1`, name: 'Group 1', members: [] },
-                { id: `grp-${ts}-2`, name: 'Group 2', members: [] },
-                { id: `grp-${ts}-3`, name: 'Group 3', members: [] }
+                { id: `grp-${ts}-1`, name: 'Group 1', members: [], numbers: [] },
+                { id: `grp-${ts}-2`, name: 'Group 2', members: [], numbers: [] },
+                { id: `grp-${ts}-3`, name: 'Group 3', members: [], numbers: [] }
             ];
-            saveGroups();
         }
+        saveGroups();
 
         renderGroupOptions();
     }
@@ -677,6 +720,7 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
     }
 
     $('#wb-group').on('change', function() {
+        renderDirectNumbers();
         renderCustomersForGroup();
     });
 
@@ -839,6 +883,53 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
         setStat(`Saved ${selectedGroup.members.length} customers in ${selectedGroup.name}.`, '#166b48');
     });
 
+    function addDirectNumber() {
+        const selectedGroup = getSelectedGroup();
+        if (!selectedGroup) {
+            setStat('Create/select a group first.', '#b63b3b');
+            return;
+        }
+
+        const enteredNumber = ($('#wb-direct-number').val() || '').trim();
+        const normalizedNumber = normalizePhone(enteredNumber);
+        if (!hasUsableWhatsAppNumber(enteredNumber)) {
+            setStat('Enter a valid Uganda (+256) or India (+91) WhatsApp number.', '#b63b3b');
+            return;
+        }
+
+        selectedGroup.numbers = selectedGroup.numbers || [];
+        if (selectedGroup.numbers.some(phone => normalizePhone(phone) === normalizedNumber)) {
+            setStat(`+${normalizedNumber} is already in ${selectedGroup.name}.`, '#9a7100');
+            return;
+        }
+
+        selectedGroup.numbers.push(normalizedNumber);
+        saveGroups();
+        $('#wb-direct-number').val('');
+        renderGroupOptions();
+        setStat(`Added +${normalizedNumber} to ${selectedGroup.name}.`, '#166b48');
+    }
+
+    $('#wb-add-direct-number').on('click', addDirectNumber);
+
+    $('#wb-direct-number').on('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            addDirectNumber();
+        }
+    });
+
+    $('#wb-direct-numbers').on('click', '.wb-remove-direct-number', function() {
+        const selectedGroup = getSelectedGroup();
+        const index = parseInt($(this).attr('data-index'), 10);
+        if (!selectedGroup || Number.isNaN(index)) return;
+
+        const removed = (selectedGroup.numbers || []).splice(index, 1)[0];
+        saveGroups();
+        renderGroupOptions();
+        setStat(removed ? `Removed +${normalizePhone(removed)} from ${selectedGroup.name}.` : '', '#667781');
+    });
+
     $('#wb-create-group').on('click', function() {
         const name = ($('#wb-new-group').val() || '').trim();
         if (!name) {
@@ -846,7 +937,7 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
             return;
         }
 
-        groups.push({ id: `grp-${Date.now()}`, name, members: [] });
+        groups.push({ id: `grp-${Date.now()}`, name, members: [], numbers: [] });
         saveGroups();
         renderGroupOptions();
         $('#wb-group').val(groups[groups.length - 1].id).trigger('change');
@@ -913,16 +1004,30 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
         const selectedNames = selectedGroup.members || [];
         const selectedCustomers = customers.filter(c => selectedNames.includes(c.name));
 
+        const seenRecipientPhones = new Set();
         const selectedRecipients = selectedCustomers
             .map(c => ({
                 contact: normalizePhone(c.whatsapp_number),
                 customer_name: c.customer_name || c.name,
                 customer: c.name
             }))
-            .filter(r => /^256\d{9}$/.test(r.contact));
+            .filter(recipient => {
+                if (!hasUsableWhatsAppNumber(recipient.contact) || seenRecipientPhones.has(recipient.contact)) {
+                    return false;
+                }
+                seenRecipientPhones.add(recipient.contact);
+                return true;
+            });
 
-        if (!selectedRecipients.length) {
-            setStat(`Group '${selectedGroup.name}' has no customers with WhatsApp numbers.`, '#b63b3b');
+        const directNumbers = [...new Set((selectedGroup.numbers || [])
+            .map(normalizePhone)
+            .filter(hasUsableWhatsAppNumber))]
+            .filter(phone => !seenRecipientPhones.has(phone));
+
+        const recipientCount = selectedRecipients.length + directNumbers.length;
+
+        if (!recipientCount) {
+            setStat(`Group '${selectedGroup.name}' has no valid WhatsApp recipients.`, '#b63b3b');
             return;
         }
 
@@ -930,11 +1035,11 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
 
         frappe.confirm(
             __(
-                'Send template {0} with attachment {1} to {2} customer(s)? WhatsApp messages cannot be recalled.',
+                'Send template {0} with attachment {1} to {2} recipient(s)? WhatsApp messages cannot be recalled.',
                 [
                     selectedTemplate.template_name,
                     carouselMode ? `${carouselItems.length} product cards` : (attachmentName || '-'),
-                    selectedRecipients.length
+                    recipientCount
                 ]
             ),
             function() {
@@ -945,6 +1050,7 @@ frappe.pages['whatsapp_broadcast'].on_page_load = function(wrapper) {
                         campaign_name: campaignName,
                         template_name: selectedTemplate.template_name,
                         customer_names: selectedRecipients.map(recipient => recipient.customer),
+                        phone_numbers: directNumbers,
                         document_url: carouselMode ? null : attachmentUrl,
                         carousel_item_codes: carouselMode ? carouselItems.map(item => item.item_code) : [],
                         price_list: carouselMode ? ($('#wb-price-list').val() || defaultSellingPriceList) : null
