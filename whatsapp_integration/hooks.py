@@ -179,7 +179,7 @@ doc_events = {
     "Comment": {
         "after_insert": [
             # "whatsapp_integration.erpnext_whatsapp.custom_scripts.sales_order_comment_notifications.on_sales_order_comment_after_insert",
-            "whatsapp_integration.erpnext_whatsapp.custom_scripts.sales_user_comment_notifications.on_sales_user_comment_after_insert",
+            # "whatsapp_integration.erpnext_whatsapp.custom_scripts.sales_user_comment_notifications.on_sales_user_comment_after_insert",
         ],
     },
     "Sales Order": {

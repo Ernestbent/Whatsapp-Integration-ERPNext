@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sample Stock Alert Report</title>
+  <style>
+    @page { size: A4; margin: 18mm; }
+    body { font-family: Arial, sans-serif; color: #1f2933; font-size: 10px; margin: 0; }
+    h2 { margin: 0 0 4px; color: #075e54; font-size: 20px; }
+    .meta { margin: 0 0 14px; color: #667781; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #075e54; color: white; text-align: left; }
+    th, td { padding: 7px; border: 1px solid #d9dee1; }
+    tr:nth-child(even) { background: #f5f7f7; }
+  </style>
+</head>
+<body>
+  <h2>Stock Alert Report</h2>
+  <p class="meta">For Operations Manager &middot; September 23, 2026 &middot; Main Stores - Sample Company</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Item Code</th>
+        <th>Item</th>
+        <th>Status</th>
+        <th>Current Stock</th>
+        <th>Avg. Daily Sales</th>
+        <th>Days Remaining</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>BRK-PAD-001</td><td>Front Brake Pad Set</td><td>CRITICAL</td><td>0.00</td><td>4.20</td><td>0.00</td></tr>
+      <tr><td>FLT-OIL-005</td><td>Engine Oil Filter</td><td>CRITICAL</td><td>3.00</td><td>3.50</td><td>0.86</td></tr>
+      <tr><td>PLG-SPK-004</td><td>Spark Plug Standard</td><td>CRITICAL</td><td>8.00</td><td>4.80</td><td>1.67</td></tr>
+      <tr><td>BLT-FAN-002</td><td>Alternator Fan Belt</td><td>CRITICAL</td><td>5.00</td><td>2.10</td><td>2.38</td></tr>
+      <tr><td>SHK-RR-009</td><td>Rear Shock Absorber</td><td>LOW</td><td>12.00</td><td>2.40</td><td>5.00</td></tr>
+      <tr><td>BUL-H4-010</td><td>H4 Headlight Bulb</td><td>LOW</td><td>18.00</td><td>3.20</td><td>5.63</td></tr>
+      <tr><td>WPR-018-003</td><td>18-inch Wiper Blade</td><td>LOW</td><td>10.00</td><td>1.50</td><td>6.67</td></tr>
+    </tbody>
+  </table>
+</body>
+</html>
