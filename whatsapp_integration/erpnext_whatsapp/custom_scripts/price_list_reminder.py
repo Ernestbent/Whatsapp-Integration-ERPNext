@@ -33,30 +33,57 @@ TEMPLATE_BODY = (
 
 
 def _get_current_price_rows(price_list=PRICE_LIST):
-	"""Return every enabled Item with its standard selling rate and current stock."""
-	currency = frappe.db.get_single_value("Global Defaults", "default_currency") or "UGX"
-	return frappe.db.sql(
+	"""Return current Standard Selling Item Price rates with live stock totals."""
+	rows = frappe.db.sql(
 		"""
 		SELECT
-			i.name AS item_code,
+			ip.item_code,
 			i.item_name,
 			i.brand,
-			i.stock_uom AS uom,
-			COALESCE(i.standard_rate, 0) AS price_list_rate,
-			%(currency)s AS currency,
-			COALESCE(stock.actual_qty, 0) AS available_qty
-		FROM `tabItem` i
+			COALESCE(NULLIF(ip.uom, ''), i.stock_uom) AS uom,
+			ip.price_list_rate,
+			ip.currency,
+			COALESCE(stock.actual_qty, 0) AS available_qty,
+			ip.valid_from,
+			ip.modified
+		FROM `tabItem Price` ip
+		INNER JOIN `tabItem` i ON i.name = ip.item_code
 		LEFT JOIN (
 			SELECT item_code, SUM(actual_qty) AS actual_qty
 			FROM `tabBin`
 			GROUP BY item_code
-		) stock ON stock.item_code = i.name
-		WHERE i.disabled = 0
-		ORDER BY i.name
+		) stock ON stock.item_code = ip.item_code
+		WHERE
+			ip.price_list = %(price_list)s
+			AND ip.selling = 1
+			AND i.disabled = 0
+			AND IFNULL(ip.customer, '') = ''
+			AND IFNULL(ip.batch_no, '') = ''
+			AND (ip.valid_from IS NULL OR ip.valid_from <= %(today)s)
+			AND (ip.valid_upto IS NULL OR ip.valid_upto >= %(today)s)
+		ORDER BY
+			ip.item_code,
+			COALESCE(NULLIF(ip.uom, ''), i.stock_uom),
+			ip.currency,
+			ip.valid_from DESC,
+			ip.modified DESC
 		""",
-		{"currency": currency},
+		{"price_list": price_list, "today": nowdate()},
 		as_dict=True,
 	)
+
+	# Preserve distinct UOM/currency rates while avoiding duplicate overlapping
+	# Item Price rows. The newest currently valid row sorts first.
+	current_rows = []
+	seen = set()
+	for row in rows:
+		key = (row.item_code, row.uom or "", row.currency or "")
+		if key in seen:
+			continue
+		seen.add(key)
+		current_rows.append(row)
+
+	return current_rows
 
 
 def _build_price_list_xlsx(rows, price_list=PRICE_LIST):
@@ -235,7 +262,7 @@ def _send_price_list_reminder(
 
 	rows = _get_current_price_rows()
 	if not rows:
-		frappe.throw(_("No enabled Items were found for the Standard Selling price list."))
+		frappe.throw(_("No active Item Price rates were found in Standard Selling."))
 
 	# Validate WhatsApp configuration before sending the email. The notification
 	# itself still runs only after the synchronous email send succeeds.

@@ -10,23 +10,23 @@ from whatsapp_integration.erpnext_whatsapp.custom_scripts import price_list_remi
 
 
 class TestPriceListReminder(TestCase):
-	def test_current_price_rows_include_all_enabled_items(self):
+	def test_current_price_rows_keep_latest_item_price_per_uom_and_currency(self):
 		rows = [
 			frappe._dict(item_code="ITEM-1", uom="Nos", currency="UGX", price_list_rate=120),
-			frappe._dict(item_code="ITEM-2", uom="Box", currency="UGX", price_list_rate=1000),
+			frappe._dict(item_code="ITEM-1", uom="Nos", currency="UGX", price_list_rate=100),
+			frappe._dict(item_code="ITEM-1", uom="Box", currency="UGX", price_list_rate=1000),
 		]
 
 		database = MagicMock()
-		database.get_single_value.return_value = "UGX"
 		database.sql.return_value = rows
 		with patch.object(price_list_reminder.frappe, "db", database):
 			result = price_list_reminder._get_current_price_rows()
 
 		self.assertEqual(len(result), 2)
 		self.assertEqual(result[0].price_list_rate, 120)
-		self.assertEqual(result[1].item_code, "ITEM-2")
+		self.assertEqual(result[1].uom, "Box")
 		database.sql.assert_called_once()
-		self.assertEqual(database.sql.call_args.args[1], {"currency": "UGX"})
+		self.assertEqual(database.sql.call_args.args[1]["price_list"], "Standard Selling")
 
 	def test_whatsapp_notification_uses_positional_parameters(self):
 		response = MagicMock()
