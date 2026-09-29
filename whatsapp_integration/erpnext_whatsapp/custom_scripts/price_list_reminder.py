@@ -20,9 +20,9 @@ PRICE_LIST = "Standard Selling"
 TEMPLATE_NAME = "price_list_reminder"
 TEMPLATE_LANGUAGE = "en"
 
-DEFAULT_RECIPIENT_NAME = "Othieno Benedict"
-DEFAULT_RECIPIENT_EMAIL = "othienobenedict8@gmail.com"
-DEFAULT_RECIPIENT_PHONE = "0757001909"
+DEFAULT_RECIPIENT_NAME = "Manjot"
+DEFAULT_RECIPIENT_EMAIL = "manjotriar@gmail.com"
+DEFAULT_RECIPIENT_PHONE = "0755829642"
 
 TEMPLATE_BODY = (
 	"Hello {{1}},\n\n"
