@@ -234,6 +234,9 @@ scheduler_events = {
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_manager_outstanding_reports.run_scheduled_manager_outstanding_reports",
             # "whatsapp_integration.erpnext_whatsapp.custom_scripts.send_salesperson_opt_in_reminders.run_scheduled_salesperson_opt_in_reminders",
         ],
+        "0 8 * * 1": [
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.price_list_reminder.run_scheduled_price_list_reminder",
+        ],
     }
 }
 
