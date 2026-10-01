@@ -21,7 +21,7 @@ TEMPLATE_NAME = "price_list_reminder"
 TEMPLATE_LANGUAGE = "en"
 
 DEFAULT_RECIPIENT_NAME = "Manjot"
-DEFAULT_RECIPIENT_EMAIL = "manjotriar@gmail.com"
+DEFAULT_RECIPIENT_EMAIL = "manjot.riar@gmail.com"
 DEFAULT_RECIPIENT_PHONE = "0755829642"
 
 TEMPLATE_BODY = (
