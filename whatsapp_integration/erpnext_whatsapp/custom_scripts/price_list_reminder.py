@@ -39,6 +39,7 @@ def _get_current_price_rows(price_list=PRICE_LIST):
 		SELECT
 			ip.item_code,
 			i.item_name,
+			i.description,
 			i.brand,
 			COALESCE(NULLIF(ip.uom, ''), i.stock_uom) AS uom,
 			ip.price_list_rate,
@@ -89,8 +90,8 @@ def _get_current_price_rows(price_list=PRICE_LIST):
 def _build_price_list_xlsx(rows, price_list=PRICE_LIST):
 	data = [
 		[
-			"Item Code",
-			"Item Name",
+			"Item",
+			"Description",
 			"Brand",
 			"UOM",
 			"Standard Selling Rate",
@@ -101,8 +102,8 @@ def _build_price_list_xlsx(rows, price_list=PRICE_LIST):
 	for row in rows:
 		data.append(
 			[
-				row.item_code,
-				row.item_name or row.item_code,
+				f"{row.item_code} = {row.item_name}" if row.item_name else row.item_code,
+				row.description or "",
 				row.brand or "",
 				row.uom or "",
 				flt(row.price_list_rate),
