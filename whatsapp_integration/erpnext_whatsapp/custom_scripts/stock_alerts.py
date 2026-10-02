@@ -67,12 +67,11 @@ def _calculate_alerts(settings):
 		return []
 
 	end_date = today()
-	# Both endpoints are inclusive, so a 30-day period begins 29 days ago.
+	## Both endpoints are inclusive, so a 30-day period begins 29 days ago
 	start_date = add_days(end_date, 1 - analysis_period)
 
-	# Returns are explicitly excluded. Sales are restricted to the warehouse
-	# whose current Bin quantity is used below, so demand and stock have the
-	# same scope and unit of measure.
+	## Returns are excluded; sales are limited to the same warehouse as the Bin
+	## quantity used below, so demand and stock share the same scope and UOM
 	top_items = frappe.db.sql(
 		"""
 		SELECT
@@ -177,8 +176,8 @@ def _normalize_phone(phone):
 
 
 def _get_recipients(settings):
-	# The existing custom field is misspelled as `reciepients`; also accept the
-	# corrected spelling so the code keeps working after that field is cleaned up.
+	## The custom field is misspelled as `reciepients`; also accept the
+	## corrected spelling so this keeps working if the field is renamed
 	rows = settings.get("reciepients") or settings.get("recipients") or []
 	recipients = []
 	seen_numbers = set()
@@ -304,8 +303,8 @@ def _mark_notification_sent(settings, alert, phone):
 			}
 		).insert(ignore_permissions=True)
 
-	# Persist immediately after a confirmed WhatsApp send. This keeps an error
-	# on a later recipient from causing already-sent messages to be repeated.
+	## Persist right after a confirmed send so an error on a later recipient
+	## does not cause already-sent messages to be repeated
 	frappe.db.commit()
 
 
@@ -327,7 +326,7 @@ def _clear_recovered_states(settings, current_alerts):
 	stock_by_item = {}
 
 	for state in active_states:
-		# If it is still an alert, it is the same shortage episode.
+		## Still an alert, so it is the same shortage episode
 		if state.item_code in current_item_codes:
 			continue
 
@@ -389,22 +388,18 @@ def _send_pending_alerts(settings, alerts):
 	skipped = 0
 	failed = []
 	if template_name == "stock_alert":
+		## Nothing is low or critical, so there is nothing to send
+		if not alerts:
+			return {"sent": 0, "skipped": 0, "failed": []}
+
 		for recipient in recipients:
 			phone = recipient["phone"]
-			pending_alerts = []
-			for alert in alerts:
-				if _notification_is_active(settings, alert, phone):
-					skipped += 1
-				else:
-					pending_alerts.append(alert)
-
-			if not pending_alerts:
-				continue
 
 			try:
+				## The PDF lists every LOW and CRITICAL item, not just new ones
 				report_file = _create_stock_alert_report(
 					settings,
-					pending_alerts,
+					alerts,
 					recipient["recipient_name"],
 					phone,
 				)
@@ -420,9 +415,8 @@ def _send_pending_alerts(settings, alerts):
 			except Exception:
 				result = {"success": False, "error": frappe.get_traceback()}
 
+			## No Stock Alert State marking here, so nothing is ever skipped
 			if result.get("success"):
-				for alert in pending_alerts:
-					_mark_notification_sent(settings, alert, phone)
 				sent += 1
 			else:
 				error = result.get("error") or "Unknown WhatsApp send error"
@@ -435,6 +429,7 @@ def _send_pending_alerts(settings, alerts):
 			)
 		return {"sent": sent, "skipped": skipped, "failed": failed}
 
+	## Other templates keep the per-item, de-duplicated behaviour
 	for alert in alerts:
 		for recipient in recipients:
 			phone = recipient["phone"]
@@ -473,7 +468,7 @@ def _send_pending_alerts(settings, alerts):
 
 
 def run_stock_alert_notifications(force=False):
-	"""Scheduled entry point: calculate, de-duplicate and send stock alerts."""
+	"""Scheduled entry point: calculate and send the full stock alert report."""
 	settings = _get_enabled_settings()
 	if not settings or not frappe.db.exists("DocType", STATE_DOCTYPE):
 		return {"sent": 0, "skipped": 0, "failed": []}
