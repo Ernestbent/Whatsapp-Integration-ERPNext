@@ -173,14 +173,25 @@ def _send_invoice_whatsapp_async(sales_invoice):
 
 
 @frappe.whitelist()
-def send_invoice_notification(sales_invoice):
-    """Called from JS button — enqueues background job"""
+def send_invoice_notification(doc=None, method=None, sales_invoice=None):
+    """Queue the invoice PDF for WhatsApp from a hook or the Send Invoice button."""
+    if sales_invoice:
+        invoice_name = sales_invoice
+    elif isinstance(doc, str):
+        invoice_name = doc
+    else:
+        invoice_name = getattr(doc, "name", None)
+
+    if not invoice_name:
+        frappe.throw("No Sales Invoice provided.")
+
     frappe.enqueue(
         _send_invoice_whatsapp_async,
-        sales_invoice=sales_invoice,
+        sales_invoice=invoice_name,
         queue="default",
         timeout=300,
         is_async=True,
-        now=False
+        now=False,
+        enqueue_after_commit=True,
     )
     return {"success": True}
