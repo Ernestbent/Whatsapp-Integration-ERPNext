@@ -1,14 +1,23 @@
-import frappe
 import json
-import requests
-import os
 import mimetypes
+import os
+
+import frappe
+import requests
+from frappe.utils import cint
 
 
 def _send_invoice_whatsapp_async(sales_invoice):
     """Background job - fetches template, generates PDF and sends WhatsApp"""
     try:
         doc = frappe.get_doc("Sales Invoice", sales_invoice)
+
+        # Return invoices are credit notes, so they must not receive the standard
+        # sales-invoice notification. Keep this guard in the worker as a safety
+        # net for jobs queued directly or before an invoice was marked as a return.
+        if cint(doc.get("is_return")):
+            return
+
         customer = frappe.get_doc("Customer", doc.customer)
         phone = customer.whatsapp_number
 
@@ -184,6 +193,18 @@ def send_invoice_notification(doc=None, method=None, sales_invoice=None):
 
     if not invoice_name:
         frappe.throw("No Sales Invoice provided.")
+
+    if isinstance(doc, str) or doc is None:
+        is_return = frappe.db.get_value("Sales Invoice", invoice_name, "is_return")
+    else:
+        is_return = doc.get("is_return")
+
+    if cint(is_return):
+        return {
+            "success": False,
+            "skipped": True,
+            "reason": "return_invoice",
+        }
 
     frappe.enqueue(
         _send_invoice_whatsapp_async,

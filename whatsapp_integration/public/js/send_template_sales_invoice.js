@@ -1,6 +1,6 @@
 frappe.ui.form.on('Sales Invoice', {
     refresh(frm) {
-        if (!frm.is_new()) {
+        if (!frm.is_new() && !frm.doc.is_return) {
             frm.add_custom_button('Send Invoice', function () {
                 frappe.call({
                     method: 'whatsapp_integration.erpnext_whatsapp.custom_scripts.send_whatsapp_notification_template_invoice.send_invoice_notification',
