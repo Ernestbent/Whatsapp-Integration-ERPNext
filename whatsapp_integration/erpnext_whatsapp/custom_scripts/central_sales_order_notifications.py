@@ -45,6 +45,8 @@ NOTIFIABLE_WORKFLOW_STATES = {
 }
 SEND_JOB_TIMEOUT = 600
 SEND_LOCK_TIMEOUT = SEND_JOB_TIMEOUT + 60
+TARGET_CUSTOMER = "Zain Auto Products / Nabugabo / 0752862674"
+TARGET_CUSTOMER_RECIPIENT = "0706734442"
 
 
 def _normalize_email(value):
@@ -452,6 +454,66 @@ def send_central_sales_order_async(doc_name):
         # worker may own the key and releasing it would raise an exception.
         with suppress(Exception):
             lock.release()
+
+
+def send_target_customer_sales_order_async(doc_name):
+    phone = _normalize_phone(TARGET_CUSTOMER_RECIPIENT)
+    lock = frappe.cache.lock(
+        f"target-customer-sales-order-whatsapp:{doc_name}:{phone}",
+        timeout=SEND_LOCK_TIMEOUT,
+        blocking=False,
+    )
+    if not lock.acquire(blocking=False):
+        return
+
+    try:
+        sales_order = frappe.get_doc("Sales Order", doc_name)
+        if sales_order.docstatus != 1 or sales_order.customer != TARGET_CUSTOMER:
+            return
+        if _recipient_already_sent(sales_order, phone):
+            return
+
+        customer = frappe.get_doc("Customer", sales_order.customer)
+        parameters = _build_template_parameters(sales_order, customer)
+        pdf_doc = _create_sales_order_pdf(sales_order)
+        result = _send_template(phone, pdf_doc, parameters)
+        if not result.get("success"):
+            frappe.log_error(
+                f"{doc_name} to {phone}: {result.get('error')}",
+                "Target Customer Sales Order WhatsApp",
+            )
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Target Customer Sales Order WhatsApp")
+    finally:
+        with suppress(Exception):
+            lock.release()
+
+
+def on_target_customer_sales_order_submit(doc, method=None):
+    if doc.docstatus != 1 or doc.customer != TARGET_CUSTOMER:
+        return
+
+    phone = _normalize_phone(TARGET_CUSTOMER_RECIPIENT)
+    if not phone or _recipient_already_sent(doc, phone):
+        return
+
+    frappe.enqueue(
+        send_target_customer_sales_order_async,
+        doc_name=doc.name,
+        queue="short",
+        timeout=SEND_JOB_TIMEOUT,
+        is_async=True,
+        now=False,
+        job_id=f"target-customer-sales-order-whatsapp-{doc.name}-{phone}",
+        deduplicate=True,
+        enqueue_after_commit=True,
+    )
+
+    frappe.msgprint(
+        _("Customer Sales Order WhatsApp message will be sent shortly."),
+        indicator="blue",
+        alert=True,
+    )
 
 
 def _should_notify(doc):

@@ -184,7 +184,8 @@ doc_events = {
     },
     "Sales Order": {
         "on_submit": [
-            "whatsapp_integration.erpnext_whatsapp.custom_scripts.central_sales_order_notifications.on_central_sales_order_submit"
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.central_sales_order_notifications.on_central_sales_order_submit",
+            "whatsapp_integration.erpnext_whatsapp.custom_scripts.central_sales_order_notifications.on_target_customer_sales_order_submit",
         ],
         "on_update_after_submit": [
             "whatsapp_integration.erpnext_whatsapp.custom_scripts.central_sales_order_notifications.on_central_sales_order_update_after_submit",
