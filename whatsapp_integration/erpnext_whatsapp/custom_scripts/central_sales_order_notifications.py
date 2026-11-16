@@ -24,7 +24,18 @@ TEMPLATE_BODY = """New Sales Order for *Central Region*
 *Amount:* UGX {{5}}
 
 Please find the Sales Order details."""
-OVERRIDABLE_RECIPIENT_NUMBER = "0755829642"
+ALL_ORDERS_TEMPLATE_NAME = "all_sales_orders"
+ALL_ORDERS_TEMPLATE_BODY = """New Sales Order
+
+*Customer:* {{1}}
+*Salesperson:* {{2}}
+*Total Items:* {{3}}
+*Focus Items:* {{4}}
+*Amount:* UGX {{5}}
+
+Please find the Sales Order details."""
+BOSS_RECIPIENT_NUMBER = "0755829642"
+OVERRIDABLE_RECIPIENT_NUMBER = BOSS_RECIPIENT_NUMBER
 RECIPIENT_NUMBERS = {
     "0750229862",
     OVERRIDABLE_RECIPIENT_NUMBER,
@@ -101,6 +112,21 @@ def _is_central_sales_order(sales_order):
     }
 
 
+def _get_recipient_templates(sales_order):
+    """Keep Central recipients scoped, with one all-region notification for the boss."""
+    recipients = {}
+    if _is_central_sales_order(sales_order):
+        recipients.update({phone: TEMPLATE_NAME for phone in _get_recipient_numbers()})
+
+    site_override = (frappe.conf.get("whatsapp_test_recipient") or "").strip()
+    boss_phone = _normalize_phone(site_override or BOSS_RECIPIENT_NUMBER)
+    if boss_phone:
+        # Replace the boss's Central entry so each order is sent only once.
+        recipients[boss_phone] = ALL_ORDERS_TEMPLATE_NAME
+
+    return recipients
+
+
 def _get_salesperson_label(sales_order):
     owner = getattr(sales_order, "owner", None)
     if owner:
@@ -155,12 +181,16 @@ def _build_template_parameters(sales_order, customer):
     }
 
 
-def _get_template():
+def _get_template(template_name=TEMPLATE_NAME):
+    template_bodies = {
+        TEMPLATE_NAME: TEMPLATE_BODY,
+        ALL_ORDERS_TEMPLATE_NAME: ALL_ORDERS_TEMPLATE_BODY,
+    }
     return frappe._dict(
-        template_name=TEMPLATE_NAME,
+        template_name=template_name,
         language=TEMPLATE_LANGUAGE,
         format="DOCUMENT",
-        body_text=TEMPLATE_BODY,
+        body_text=template_bodies[template_name],
         footer_text="",
     )
 
@@ -250,8 +280,8 @@ def _upload_media(file_doc, access_token, phone_number_id):
     media_id = result.get("id")
     if not media_id:
         frappe.log_error(
-            f"Failed to upload central Sales Order PDF: {json.dumps(result, indent=2)}",
-            "Central Sales Order WhatsApp",
+            f"Failed to upload Sales Order PDF: {json.dumps(result, indent=2)}",
+            "Sales Order WhatsApp",
         )
         frappe.throw(result.get("error", {}).get("message", "WhatsApp media upload failed"))
 
@@ -292,8 +322,8 @@ def _render_message(template, parameters):
     return message
 
 
-def _send_template(phone, pdf_doc, parameters):
-    template = _get_template()
+def _send_template(phone, pdf_doc, parameters, template_name=TEMPLATE_NAME):
+    template = _get_template(template_name)
 
     access_token, phone_number_id = _get_whatsapp_credentials()
     phone = _normalize_phone(phone)
@@ -352,11 +382,11 @@ def _send_template(phone, pdf_doc, parameters):
     error_msg = result.get("error", {}).get("message", str(result))
     frappe.log_error(
         (
-            f"Central Sales Order WhatsApp send failed: {error_msg}\n\n"
+            f"Sales Order WhatsApp send failed: {error_msg}\n\n"
             f"Payload:\n{json.dumps(payload, indent=2)}\n\n"
             f"Response:\n{json.dumps(result, indent=2)}"
         ),
-        "Central Sales Order WhatsApp",
+        "Sales Order WhatsApp",
     )
     return {"success": False, "error": error_msg}
 
@@ -384,13 +414,13 @@ def _recipient_already_sent(sales_order, phone):
 def _get_pending_recipient_numbers(sales_order):
     return {
         phone
-        for phone in _get_recipient_numbers()
+        for phone in _get_recipient_templates(sales_order)
         if not _recipient_already_sent(sales_order, phone)
     }
 
 
 def _all_recipients_sent(sales_order):
-    recipient_numbers = _get_recipient_numbers()
+    recipient_numbers = _get_recipient_templates(sales_order)
     return bool(recipient_numbers) and not any(
         not _recipient_already_sent(sales_order, phone)
         for phone in recipient_numbers
@@ -405,15 +435,16 @@ def send_central_sales_order_async(doc_name):
     )
     if not lock.acquire(blocking=False):
         frappe.logger().info(
-            f"Central Sales Order WhatsApp send already in progress for {doc_name}"
+            f"Sales Order WhatsApp send already in progress for {doc_name}"
         )
         return
 
     try:
         sales_order = frappe.get_doc("Sales Order", doc_name)
-        if not _is_central_sales_order(sales_order):
+        if sales_order.docstatus != 1:
             return
 
+        recipient_templates = _get_recipient_templates(sales_order)
         recipient_numbers = _get_pending_recipient_numbers(sales_order)
         if not recipient_numbers:
             return
@@ -430,7 +461,9 @@ def send_central_sales_order_async(doc_name):
             if _recipient_already_sent(sales_order, phone):
                 continue
 
-            result = _send_template(phone, pdf_doc, parameters)
+            result = _send_template(
+                phone, pdf_doc, parameters, template_name=recipient_templates[phone]
+            )
             if result.get("success"):
                 success_count += 1
             else:
@@ -438,17 +471,17 @@ def send_central_sales_order_async(doc_name):
 
         if success_count:
             frappe.log_error(
-                f"Central Sales Order sent to {success_count}/{len(recipient_numbers)} recipients for {doc_name}",
-                "Central Sales Order WhatsApp Success",
+                f"Sales Order sent to {success_count}/{len(recipient_numbers)} recipients for {doc_name}",
+                "Sales Order WhatsApp Success",
             )
         if failures:
             frappe.log_error(
-                "Failed central recipients:\n" + "\n".join(failures),
-                "Central Sales Order WhatsApp",
+                "Failed recipients:\n" + "\n".join(failures),
+                "Sales Order WhatsApp",
             )
 
     except Exception:
-        frappe.log_error(frappe.get_traceback(), "Central Sales Order WhatsApp")
+        frappe.log_error(frappe.get_traceback(), "Sales Order WhatsApp")
     finally:
         # Redis locks have a TTL. If a long-running job outlives it, another
         # worker may own the key and releasing it would raise an exception.
@@ -519,8 +552,6 @@ def on_target_customer_sales_order_submit(doc, method=None):
 def _should_notify(doc):
     if getattr(doc, "docstatus", None) != 1:
         return False
-    if not _is_central_sales_order(doc):
-        return False
     if _all_recipients_sent(doc):
         return False
 
@@ -542,7 +573,7 @@ def _enqueue_central_sales_order(doc):
     )
 
     frappe.msgprint(
-        _("Central Sales Order WhatsApp message will be sent shortly."),
+        _("Sales Order WhatsApp message will be sent shortly."),
         indicator="blue",
         alert=True,
     )
